@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Transaction } from '../types';
-
-// Demo user ID for testing (replace with real auth)
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+import { useAuth } from '../context/AuthContext';
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Fetch transactions
   const fetchTransactions = async () => {
+    if (!user) {
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -19,7 +24,7 @@ export function useTransactions() {
       const { data, error: fetchError } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', DEMO_USER_ID)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -29,7 +34,6 @@ export function useTransactions() {
     } catch (err) {
       console.error('Error fetching transactions:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar transacciones');
-      // Fallback to empty array if table doesn't exist yet
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -43,13 +47,17 @@ export function useTransactions() {
     type: 'income' | 'expense',
     note?: string
   ) => {
+    if (!user) {
+      throw new Error('Debes iniciar sesión para agregar transacciones');
+    }
+
     try {
       setError(null);
 
       const { data, error: insertError } = await supabase
         .from('transactions')
         .insert({
-          user_id: DEMO_USER_ID,
+          user_id: user.id,
           amount,
           category,
           type,
@@ -81,10 +89,10 @@ export function useTransactions() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Initial fetch
+  // Fetch when user changes
   useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, [user?.id]);
 
   return {
     transactions,
