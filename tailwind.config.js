@@ -8,12 +8,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0f0f0f',
-        card: '#1a1a1a',
-        foreground: '#ffffff',
-        'foreground-muted': '#a0a0a0',
-        border: '#2a2a2a',
-        primary: '#6366f1',
+        background: {
+          DEFAULT: 'var(--background)',
+          light: '#f5f5f5',
+          dark: '#0f0f0f',
+        },
+        card: {
+          DEFAULT: 'var(--card)',
+          light: '#ffffff',
+          dark: '#1a1a1a',
+        },
+        foreground: {
+          DEFAULT: 'var(--foreground)',
+          light: '#1a1a1a',
+          dark: '#ffffff',
+        },
+        'foreground-muted': {
+          DEFAULT: 'var(--foreground-muted)',
+          light: '#6b7280',
+          dark: '#a0a0a0',
+        },
+        border: {
+          DEFAULT: 'var(--border)',
+          light: '#e5e7eb',
+          dark: '#2a2a2a',
+        },
+        primary: {
+          DEFAULT: '#6366f1',
+          light: '#4f46e5',
+          dark: '#6366f1',
+        },
         success: '#22c55e',
         danger: '#ef4444',
         // Category colors

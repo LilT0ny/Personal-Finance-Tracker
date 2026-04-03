@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, LogOut, Loader2 } from 'lucide-react';
+import { Plus, LogOut, Loader2, Sun, Moon } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { BalanceCard } from './components/BalanceCard';
 import { ChartSection } from './components/ChartSection';
 import { CategoryGrid } from './components/CategoryGrid';
@@ -8,15 +9,16 @@ import { TransactionModal } from './components/TransactionModal';
 import { TransactionList } from './components/TransactionList';
 import { useTransactions } from './hooks/useTransactions';
 import { LoginPage } from './pages/LoginPage';
-import { CATEGORIES, Category } from './types';
+import { CATEGORIES } from './types';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | undefined>();
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const { transactions, income, expenses, addTransaction } = useTransactions();
   const { signOut, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
-  const handleCategorySelect = (category: Category) => {
+  const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
     setModalOpen(true);
   };
@@ -43,13 +45,26 @@ function Dashboard() {
       {/* Header */}
       <header className="p-4 pb-0 flex items-center justify-between">
         <h1 className="text-xl font-bold">Finance Tracker</h1>
-        <button
-          onClick={signOut}
-          className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-          title="Cerrar sesión"
-        >
-          <LogOut className="w-5 h-5 text-foreground-muted" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5 text-foreground-muted" />
+            ) : (
+              <Moon className="w-5 h-5 text-foreground-muted" />
+            )}
+          </button>
+          <button
+            onClick={signOut}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-5 h-5 text-foreground-muted" />
+          </button>
+        </div>
       </header>
 
       {/* User email */}
@@ -115,8 +130,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

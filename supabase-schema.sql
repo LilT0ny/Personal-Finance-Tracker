@@ -14,41 +14,99 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Enable RLS
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+-- 2. Create custom_categories table
+CREATE TABLE IF NOT EXISTS public.custom_categories (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL,
+  label TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  color TEXT NOT NULL,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- 3. Create RLS policies
--- Users can only see their own transactions
+-- 3. Create budgets table
+CREATE TABLE IF NOT EXISTS public.budgets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  category TEXT NOT NULL,
+  limit_amount NUMERIC(12, 2) NOT NULL,
+  period TEXT NOT NULL CHECK (period IN ('weekly', 'monthly')),
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. Enable RLS
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
+
+-- 5. Create RLS policies for transactions
 CREATE POLICY "users_can_view_own_transactions" 
 ON public.transactions 
 FOR SELECT 
 USING (auth.uid() = user_id);
 
--- Users can only insert their own transactions
 CREATE POLICY "users_can_insert_own_transactions" 
 ON public.transactions 
 FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
--- Users can only update their own transactions
 CREATE POLICY "users_can_update_own_transactions" 
 ON public.transactions 
 FOR UPDATE 
 USING (auth.uid() = user_id);
 
--- Users can only delete their own transactions
 CREATE POLICY "users_can_delete_own_transactions" 
 ON public.transactions 
 FOR DELETE 
 USING (auth.uid() = user_id);
 
--- 4. Create index for faster queries
+-- 6. Create RLS policies for custom_categories
+CREATE POLICY "users_can_view_own_categories" 
+ON public.custom_categories 
+FOR SELECT 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "users_can_insert_own_categories" 
+ON public.custom_categories 
+FOR INSERT 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "users_can_update_own_categories" 
+ON public.custom_categories 
+FOR UPDATE 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "users_can_delete_own_categories" 
+ON public.custom_categories 
+FOR DELETE 
+USING (auth.uid() = user_id);
+
+-- 7. Create RLS policies for budgets
+CREATE POLICY "users_can_view_own_budgets" 
+ON public.budgets 
+FOR SELECT 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "users_can_insert_own_budgets" 
+ON public.budgets 
+FOR INSERT 
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "users_can_update_own_budgets" 
+ON public.budgets 
+FOR UPDATE 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "users_can_delete_own_budgets" 
+ON public.budgets 
+FOR DELETE 
+USING (auth.uid() = user_id);
+
+-- 8. Create indexes
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON public.transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON public.transactions(created_at DESC);
-
--- 5. Insert demo data (optional - remove in production)
--- INSERT INTO public.transactions (user_id, amount, category, type, note)
--- VALUES 
---   ('00000000-0000-0000-0000-000000000001', 1500.00, 'food', 'income', 'Salario'),
---   ('00000000-0000-0000-0000-000000000001', 45.50, 'food', 'expense', 'Supermercado'),
---   ('00000000-0000-0000-0000-000000000001', 25.00, 'transport', 'expense', 'Nafta');
+CREATE INDEX IF NOT EXISTS idx_custom_categories_user_id ON public.custom_categories(user_id);
+CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON public.budgets(user_id);

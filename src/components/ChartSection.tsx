@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Transaction, Category, getCategoryConfig } from '../types';
+import { Transaction, getCategoryConfig } from '../types';
 
 interface ChartSectionProps {
   transactions: Transaction[];
@@ -12,11 +12,11 @@ export function ChartSection({ transactions }: ChartSectionProps) {
     .reduce((acc, t) => {
       acc[t.category] = (acc[t.category] || 0) + t.amount;
       return acc;
-    }, {} as Record<Category, number>);
+    }, {} as Record<string, number>);
 
   // Convert to chart data format
   const chartData = Object.entries(expensesByCategory).map(([category, amount]) => {
-    const config = getCategoryConfig(category as Category);
+    const config = getCategoryConfig(category);
     return {
       name: config.label,
       value: amount,

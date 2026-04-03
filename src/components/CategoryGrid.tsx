@@ -9,13 +9,13 @@ import {
   MoreHorizontal,
   Circle
 } from 'lucide-react';
-import { CategoryConfig, Category } from '../types';
+import { CategoryConfig } from '../types';
 import { cn } from '../lib/utils';
 
 interface CategoryGridProps {
   categories: CategoryConfig[];
-  selectedCategory?: Category;
-  onSelectCategory: (category: Category) => void;
+  selectedCategory?: string;
+  onSelectCategory: (category: string) => void;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
