@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  /* Prevent pull-to-refresh on mobile */
+  html {
+    overscroll-behavior: none;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4a4a4a;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card rounded-2xl p-4 border border-border;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-xl transition-colors;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-card text-foreground-muted hover:text-foreground transition-colors;
+  }
+
+  .input {
+    @apply bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50;
+  }
+
+  /* Touch-friendly tap target */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
