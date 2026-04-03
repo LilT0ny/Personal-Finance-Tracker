@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, LogOut, Loader2, Sun, Moon } from 'lucide-react';
+import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { BalanceCard } from './components/BalanceCard';
@@ -7,14 +7,19 @@ import { ChartSection } from './components/ChartSection';
 import { CategoryGrid } from './components/CategoryGrid';
 import { TransactionModal } from './components/TransactionModal';
 import { TransactionList } from './components/TransactionList';
+import { BudgetManager } from './components/BudgetManager';
 import { useTransactions } from './hooks/useTransactions';
+import { useBudgets } from './hooks/useBudgets';
 import { LoginPage } from './pages/LoginPage';
 import { CATEGORIES } from './types';
+import { exportToExcel } from './lib/exportExcel';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const { transactions, income, expenses, addTransaction } = useTransactions();
+  const { budgets } = useBudgets();
   const { signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -40,12 +45,44 @@ function Dashboard() {
     setSelectedCategory(undefined);
   };
 
+  const handleExportExcel = () => {
+    exportToExcel(transactions, 'mis-transacciones');
+  };
+
+  // Calculate spent by category for current month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthTransactions = transactions.filter(t => 
+    new Date(t.created_at) >= startOfMonth
+  );
+  
+  const spentByCategory = monthTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="p-4 pb-0 flex items-center justify-between">
         <h1 className="text-xl font-bold">Finance Tracker</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title="Exportar Excel"
+          >
+            <Download className="w-5 h-5 text-foreground-muted" />
+          </button>
+          <button
+            onClick={() => setBudgetManagerOpen(true)}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title="Presupuestos"
+          >
+            <Wallet className="w-5 h-5 text-foreground-muted" />
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2 tap-target rounded-full hover:bg-card transition-colors"
@@ -78,6 +115,25 @@ function Dashboard() {
         {/* Chart Section */}
         <ChartSection transactions={transactions} />
 
+        {/* Budget Alerts */}
+        {budgets.filter(b => b.period === 'monthly' && b.type === 'expense').map(budget => {
+          const spent = spentByCategory[budget.category] || 0;
+          const percentage = (spent / budget.limit_amount) * 100;
+          if (percentage >= 80) {
+            const category = CATEGORIES.find(c => c.id === budget.category);
+            return (
+              <div key={budget.id} className={`mb-2 p-3 rounded-xl border ${
+                percentage >= 100 ? 'border-danger bg-danger/10' : 'border-yellow-500 bg-yellow-500/10'
+              }`}>
+                <p className="text-sm font-medium">
+                  {percentage >= 100 ? '⚠️' : '⚡'} {category?.label}: ${spent.toFixed(2)} / ${budget.limit_amount}
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })}
+
         {/* Category Grid */}
         <div className="mb-4">
           <p className="text-foreground-muted text-sm mb-3">Selecciona una categoría</p>
@@ -109,6 +165,12 @@ function Dashboard() {
         selectedCategory={selectedCategory}
         onClose={handleCloseModal}
         onSave={handleSaveTransaction}
+      />
+
+      {/* Budget Manager Modal */}
+      <BudgetManager
+        isOpen={budgetManagerOpen}
+        onClose={() => setBudgetManagerOpen(false)}
       />
     </div>
   );
