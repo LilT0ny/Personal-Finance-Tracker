@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download, Mail } from 'lucide-react';
+import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download, Mail, Settings } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { BalanceCard } from './components/BalanceCard';
@@ -8,6 +8,8 @@ import { CategoryGrid } from './components/CategoryGrid';
 import { TransactionModal } from './components/TransactionModal';
 import { TransactionList } from './components/TransactionList';
 import { BudgetManager } from './components/BudgetManager';
+import { CategoryManager } from './components/CategoryManager';
+import { CategoryBudgetChart } from './components/CategoryBudgetChart';
 import { useTransactions } from './hooks/useTransactions';
 import { useBudgets } from './hooks/useBudgets';
 import { LoginPage } from './pages/LoginPage';
@@ -18,6 +20,7 @@ import { sendMonthlySummary } from './lib/emailService';
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -122,6 +125,13 @@ function Dashboard() {
             <Wallet className="w-5 h-5 text-foreground-muted" />
           </button>
           <button
+            onClick={() => setCategoryManagerOpen(true)}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title="Gestionar categorías"
+          >
+            <Settings className="w-5 h-5 text-foreground-muted" />
+          </button>
+          <button
             onClick={toggleTheme}
             className="p-2 tap-target rounded-full hover:bg-card transition-colors"
             title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
@@ -152,6 +162,9 @@ function Dashboard() {
 
         {/* Chart Section */}
         <ChartSection transactions={transactions} />
+
+        {/* Category Budget Chart */}
+        <CategoryBudgetChart transactions={transactions} budgets={budgets} />
 
         {/* Budget Alerts */}
         {budgets.filter(b => b.period === 'monthly' && b.type === 'expense').map(budget => {
@@ -209,6 +222,12 @@ function Dashboard() {
       <BudgetManager
         isOpen={budgetManagerOpen}
         onClose={() => setBudgetManagerOpen(false)}
+      />
+
+      {/* Category Manager Modal */}
+      <CategoryManager
+        isOpen={categoryManagerOpen}
+        onClose={() => setCategoryManagerOpen(false)}
       />
     </div>
   );
