@@ -8,15 +8,7 @@ export interface Transaction {
   created_at: string;
 }
 
-export type Category = 
-  | 'food' 
-  | 'transport' 
-  | 'health' 
-  | 'entertainment'
-  | 'shopping' 
-  | 'utilities' 
-  | 'savings' 
-  | 'other';
+export type Category = string;
 
 export interface CategoryConfig {
   id: string;
@@ -26,19 +18,13 @@ export interface CategoryConfig {
   is_default?: boolean;
 }
 
-export const DEFAULT_CATEGORIES: CategoryConfig[] = [
-  { id: 'food', label: 'Comida', icon: 'UtensilsCrossed', color: '#f97316', is_default: true },
-  { id: 'transport', label: 'Transporte', icon: 'Car', color: '#3b82f6', is_default: true },
-  { id: 'health', label: 'Salud', icon: 'Heart', color: '#ef4444', is_default: true },
-  { id: 'entertainment', label: 'Entretenimiento', icon: 'Gamepad2', color: '#a855f7', is_default: true },
-  { id: 'shopping', label: 'Compras', icon: 'ShoppingBag', color: '#ec4899', is_default: true },
-  { id: 'utilities', label: 'Servicios', icon: 'Zap', color: '#eab308', is_default: true },
-  { id: 'savings', label: 'Ahorros', icon: 'PiggyBank', color: '#22c55e', is_default: true },
-  { id: 'other', label: 'Otros', icon: 'MoreHorizontal', color: '#6b7280', is_default: true },
-];
+// Start with empty categories - user must add all from scratch
+export const DEFAULT_CATEGORIES: CategoryConfig[] = [];
 
 export const CATEGORIES: CategoryConfig[] = [...DEFAULT_CATEGORIES];
 
 export const getCategoryConfig = (categoryId: string): CategoryConfig => {
-  return CATEGORIES.find(c => c.id === categoryId) || { id: categoryId, label: 'Otros', icon: 'MoreHorizontal', color: '#6b7280' };
+  const found = CATEGORIES.find(c => c.id === categoryId);
+  if (found) return found;
+  return { id: categoryId, label: categoryId, icon: 'Circle', color: '#6b7280' };
 };

@@ -3,8 +3,6 @@ import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download, Mail, Settings } fr
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { BalanceCard } from './components/BalanceCard';
-import { ChartSection } from './components/ChartSection';
-import { CategoryGrid } from './components/CategoryGrid';
 import { TransactionModal } from './components/TransactionModal';
 import { TransactionList } from './components/TransactionList';
 import { BudgetManager } from './components/BudgetManager';
@@ -13,7 +11,6 @@ import { CategoryBudgetChart } from './components/CategoryBudgetChart';
 import { useTransactions } from './hooks/useTransactions';
 import { useBudgets } from './hooks/useBudgets';
 import { LoginPage } from './pages/LoginPage';
-import { CATEGORIES } from './types';
 import { exportToExcel } from './lib/exportExcel';
 import { sendMonthlySummary } from './lib/emailService';
 
@@ -21,7 +18,6 @@ function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const { transactions, income, expenses, addTransaction } = useTransactions();
@@ -29,26 +25,24 @@ function Dashboard() {
   const { signOut, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategory(category);
-    setModalOpen(true);
-  };
-
   const handleSaveTransaction = async (
     amount: number,
+    category: string,
     type: 'income' | 'expense',
     note?: string
   ) => {
-    if (!selectedCategory) return;
+    if (!category) return;
     
-    await addTransaction(amount, selectedCategory, type, note);
+    await addTransaction(amount, category, type, note);
     setModalOpen(false);
-    setSelectedCategory(undefined);
   };
 
   const handleCloseModal = () => {
     setModalOpen(false);
-    setSelectedCategory(undefined);
+  };
+
+  const handleOpenModal = () => {
+    setModalOpen(true);
   };
 
   const handleExportExcel = () => {
@@ -75,20 +69,6 @@ function Dashboard() {
     
     setSendingEmail(false);
   };
-
-  // Calculate spent by category for current month
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthTransactions = transactions.filter(t => 
-    new Date(t.created_at) >= startOfMonth
-  );
-  
-  const spentByCategory = monthTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -160,40 +140,8 @@ function Dashboard() {
         {/* Balance Card */}
         <BalanceCard income={income} expenses={expenses} />
 
-        {/* Chart Section */}
-        <ChartSection transactions={transactions} />
-
         {/* Category Budget Chart */}
         <CategoryBudgetChart transactions={transactions} budgets={budgets} />
-
-        {/* Budget Alerts */}
-        {budgets.filter(b => b.period === 'monthly' && b.type === 'expense').map(budget => {
-          const spent = spentByCategory[budget.category] || 0;
-          const percentage = (spent / budget.limit_amount) * 100;
-          if (percentage >= 80) {
-            const category = CATEGORIES.find(c => c.id === budget.category);
-            return (
-              <div key={budget.id} className={`mb-2 p-3 rounded-xl border ${
-                percentage >= 100 ? 'border-danger bg-danger/10' : 'border-yellow-500 bg-yellow-500/10'
-              }`}>
-                <p className="text-sm font-medium">
-                  {percentage >= 100 ? '⚠️' : '⚡'} {category?.label}: ${spent.toFixed(2)} / ${budget.limit_amount}
-                </p>
-              </div>
-            );
-          }
-          return null;
-        })}
-
-        {/* Category Grid */}
-        <div className="mb-4">
-          <p className="text-foreground-muted text-sm mb-3">Selecciona una categoría</p>
-          <CategoryGrid
-            categories={CATEGORIES}
-            selectedCategory={selectedCategory}
-            onSelectCategory={handleCategorySelect}
-          />
-        </div>
 
         {/* Transaction List */}
         <TransactionList transactions={transactions} />
@@ -201,10 +149,7 @@ function Dashboard() {
 
       {/* Floating Action Button */}
       <button
-        onClick={() => {
-          setSelectedCategory(undefined);
-          setModalOpen(true);
-        }}
+        onClick={handleOpenModal}
         className="fixed bottom-6 right-6 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all tap-target"
       >
         <Plus className="w-7 h-7 text-white" />
@@ -213,7 +158,6 @@ function Dashboard() {
       {/* Transaction Modal */}
       <TransactionModal
         isOpen={modalOpen}
-        selectedCategory={selectedCategory}
         onClose={handleCloseModal}
         onSave={handleSaveTransaction}
       />
