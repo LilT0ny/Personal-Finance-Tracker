@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download } from 'lucide-react';
+import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download, Mail } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { BalanceCard } from './components/BalanceCard';
@@ -13,11 +13,14 @@ import { useBudgets } from './hooks/useBudgets';
 import { LoginPage } from './pages/LoginPage';
 import { CATEGORIES } from './types';
 import { exportToExcel } from './lib/exportExcel';
+import { sendMonthlySummary } from './lib/emailService';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { transactions, income, expenses, addTransaction } = useTransactions();
   const { budgets } = useBudgets();
   const { signOut, user } = useAuth();
@@ -49,6 +52,27 @@ function Dashboard() {
     exportToExcel(transactions, 'mis-transacciones');
   };
 
+  const handleSendEmail = async () => {
+    if (!user?.email) return;
+    
+    setSendingEmail(true);
+    setEmailSent(false);
+    
+    await sendMonthlySummary(
+      transactions,
+      user.email,
+      () => {
+        setEmailSent(true);
+        setTimeout(() => setEmailSent(false), 3000);
+      },
+      (error) => {
+        alert('Error al enviar email: ' + error.message);
+      }
+    );
+    
+    setSendingEmail(false);
+  };
+
   // Calculate spent by category for current month
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -75,6 +99,20 @@ function Dashboard() {
             title="Exportar Excel"
           >
             <Download className="w-5 h-5 text-foreground-muted" />
+          </button>
+          <button
+            onClick={handleSendEmail}
+            disabled={sendingEmail}
+            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
+            title="Enviar resumen por email"
+          >
+            {sendingEmail ? (
+              <Loader2 className="w-5 h-5 text-foreground-muted animate-spin" />
+            ) : emailSent ? (
+              <span className="text-success">✓</span>
+            ) : (
+              <Mail className="w-5 h-5 text-foreground-muted" />
+            )}
           </button>
           <button
             onClick={() => setBudgetManagerOpen(true)}
