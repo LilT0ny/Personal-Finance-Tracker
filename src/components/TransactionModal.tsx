@@ -96,7 +96,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
             ) : (
               <div className="grid grid-cols-4 gap-2">
                 {categories.map(cat => {
-                  const Icon = ICON_MAP[cat.icon] || Circle;
+                  const Icon = ICON_MAP[cat.icono] || Circle;
                   return (
                     <button
                       key={cat.id}
@@ -112,7 +112,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
                           <Icon className="w-4 h-4" />
                         </span>
                       </div>
-                      <span className="text-xs mt-1 truncate w-full text-center">{cat.label}</span>
+                      <span className="text-xs mt-1 truncate w-full text-center">{cat.nombre}</span>
                     </button>
                   );
                 })}
@@ -198,7 +198,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
           ) : (
             <div className="grid grid-cols-4 gap-2">
               {categories.map(cat => {
-                const Icon = ICON_MAP[cat.icon] || Circle;
+                const Icon = ICON_MAP[cat.icono] || Circle;
                 return (
                   <button
                     key={cat.id}
@@ -214,7 +214,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
                         <Icon className="w-4 h-4" />
                       </span>
                     </div>
-                    <span className="text-xs mt-1 truncate w-full text-center">{cat.label}</span>
+                    <span className="text-xs mt-1 truncate w-full text-center">{cat.nombre}</span>
                   </button>
                 );
               })}

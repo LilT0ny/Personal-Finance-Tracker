@@ -1,29 +1,50 @@
-import { useState } from 'react';
-import { Plus, LogOut, Loader2, Sun, Moon, Wallet, Download, Mail, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, Plus } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { BalanceCard } from './components/BalanceCard';
 import { TransactionModal } from './components/TransactionModal';
-import { TransactionList } from './components/TransactionList';
 import { BudgetManager } from './components/BudgetManager';
 import { CategoryManager } from './components/CategoryManager';
-import { CategoryBudgetChart } from './components/CategoryBudgetChart';
+import { Sidebar } from './components/Sidebar';
 import { useTransactions } from './hooks/useTransactions';
 import { useBudgets } from './hooks/useBudgets';
+import { useCategories } from './hooks/useCategories';
 import { LoginPage } from './pages/LoginPage';
-import { exportToExcel } from './lib/exportExcel';
-import { sendMonthlySummary } from './lib/emailService';
+import { Onboarding } from './pages/Onboarding';
+import { TransactionPageList } from './pages/TransactionPageList';
+import { ConfigPage } from './pages/ConfigPage';
+import { BalanceCard } from './components/BalanceCard';
+import { TransactionList } from './components/TransactionList';
+
+type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'config';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const { transactions, income, expenses, addTransaction } = useTransactions();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [currentSection, setCurrentSection] = useState<SidebarSection>('inicio');
+  
+  const { transactions, allTransactions, income, expenses, period, setPeriod, customDateRange, setCustomDateRange, categoryFilter, setCategoryFilter, addTransaction } = useTransactions();
   const { budgets } = useBudgets();
-  const { signOut, user } = useAuth();
+  const { categories, loading: categoriesLoading } = useCategories();
+  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  // Check if user needs onboarding - only first time (store in localStorage)
+  useEffect(() => {
+    if (!categoriesLoading && categories.length === 0) {
+      const hasOnboarded = localStorage.getItem('hasOnboarded');
+      if (!hasOnboarded) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [categoriesLoading, categories.length]);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('hasOnboarded', 'true');
+    setShowOnboarding(false);
+  };
 
   const handleSaveTransaction = async (
     amount: number,
@@ -45,112 +66,100 @@ function Dashboard() {
     setModalOpen(true);
   };
 
-  const handleExportExcel = () => {
-    exportToExcel(transactions, 'mis-transacciones');
-  };
+  // Show onboarding if user has no categories
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
-  const handleSendEmail = async () => {
-    if (!user?.email) return;
-    
-    setSendingEmail(true);
-    setEmailSent(false);
-    
-    await sendMonthlySummary(
-      transactions,
-      user.email,
-      () => {
-        setEmailSent(true);
-        setTimeout(() => setEmailSent(false), 3000);
-      },
-      (error) => {
-        alert('Error al enviar email: ' + error.message);
-      }
-    );
-    
-    setSendingEmail(false);
+  // Render current section content
+  const renderContent = () => {
+    switch (currentSection) {
+      case 'ingresos':
+        return (
+          <TransactionPageList 
+            transactions={transactions} 
+            type="income" 
+            title="Ingresos"
+            onAddTransaction={handleSaveTransaction}
+            period={period}
+            onPeriodChange={setPeriod}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
+          />
+        );
+      case 'egresos':
+        return (
+          <TransactionPageList 
+            transactions={transactions} 
+            type="expense" 
+            title="Egresos"
+            onAddTransaction={handleSaveTransaction}
+            period={period}
+            onPeriodChange={setPeriod}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
+          />
+        );
+      case 'config':
+        return <ConfigPage />;
+      case 'inicio':
+      default:
+        return (
+          <>
+            {/* Balance Card (Monthly by default) */}
+            <BalanceCard 
+              income={income} 
+              expenses={expenses} 
+              period={period}
+              onPeriodChange={setPeriod}
+              onCategoryChange={setCategoryFilter}
+              categoryFilter={categoryFilter}
+              allTransactions={allTransactions}
+              budgets={budgets}
+              customDateRange={customDateRange}
+              onCustomDateRangeChange={setCustomDateRange}
+            />
+            
+            {/* Transaction List */}
+            <TransactionList transactions={transactions} />
+          </>
+        );
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <header className="p-4 pb-0 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Finance Tracker</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportExcel}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title="Exportar Excel"
-          >
-            <Download className="w-5 h-5 text-foreground-muted" />
-          </button>
-          <button
-            onClick={handleSendEmail}
-            disabled={sendingEmail}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title="Enviar resumen por email"
-          >
-            {sendingEmail ? (
-              <Loader2 className="w-5 h-5 text-foreground-muted animate-spin" />
-            ) : emailSent ? (
-              <span className="text-success">✓</span>
-            ) : (
-              <Mail className="w-5 h-5 text-foreground-muted" />
-            )}
-          </button>
-          <button
-            onClick={() => setBudgetManagerOpen(true)}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title="Presupuestos"
-          >
-            <Wallet className="w-5 h-5 text-foreground-muted" />
-          </button>
-          <button
-            onClick={() => setCategoryManagerOpen(true)}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title="Gestionar categorías"
-          >
-            <Settings className="w-5 h-5 text-foreground-muted" />
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-foreground-muted" />
-            ) : (
-              <Moon className="w-5 h-5 text-foreground-muted" />
-            )}
-          </button>
-          <button
-            onClick={signOut}
-            className="p-2 tap-target rounded-full hover:bg-card transition-colors"
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-5 h-5 text-foreground-muted" />
-          </button>
-        </div>
-      </header>
-
-      {/* User email */}
-      <p className="text-center text-foreground-muted text-xs px-4">{user?.email}</p>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <Sidebar
+        currentSection={currentSection}
+        onSectionChange={setCurrentSection}
+        onThemeToggle={toggleTheme}
+        theme={theme}
+        onSignOut={signOut}
+      />
 
       {/* Main Content */}
-      <main className="p-4 max-w-md mx-auto">
-        {/* Balance Card */}
-        <BalanceCard income={income} expenses={expenses} />
+      <main className="flex-1 lg:ml-64 p-4 pb-24 lg:pb-4">
+        {/* Mobile header */}
+        <header className="lg:hidden mb-4">
+          <h1 className="text-xl font-bold">
+            {currentSection === 'inicio' && 'Finance Tracker'}
+            {currentSection === 'ingresos' && 'Ingresos'}
+            {currentSection === 'egresos' && 'Egresos'}
+            {currentSection === 'config' && 'Configuración'}
+          </h1>
+        </header>
 
-        {/* Category Budget Chart */}
-        <CategoryBudgetChart transactions={transactions} budgets={budgets} />
-
-        {/* Transaction List */}
-        <TransactionList transactions={transactions} />
+        {/* Content */}
+        <div className="max-w-md mx-auto lg:max-w-none">
+          {renderContent()}
+        </div>
       </main>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - always visible */}
       <button
         onClick={handleOpenModal}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all tap-target"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all tap-target lg:hidden z-40"
       >
         <Plus className="w-7 h-7 text-white" />
       </button>

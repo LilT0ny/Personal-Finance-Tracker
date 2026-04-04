@@ -1,18 +1,17 @@
 import * as XLSX from 'xlsx';
-import { Transaction, getCategoryConfig } from '../types';
+import { Transaction } from '../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export function exportToExcel(transactions: Transaction[], filename: string = 'transacciones') {
   // Transform transactions to Excel format
   const data = transactions.map(t => {
-    const category = getCategoryConfig(t.category);
     return {
-      Fecha: format(new Date(t.created_at), 'dd/MM/yyyy', { locale: es }),
-      Categoría: category.label,
-      Tipo: t.type === 'income' ? 'Ingreso' : 'Gasto',
-      Monto: t.amount,
-      Nota: t.note || '',
+      Fecha: format(new Date(t.fecha), 'dd/MM/yyyy', { locale: es }),
+      Categoría: t.category || '',
+      Tipo: t.tipo === 'Ingreso' || t.tipo === 'income' ? 'Ingreso' : 'Gasto',
+      Monto: t.monto,
+      Nota: t.descripcion || '',
     };
   });
 
@@ -45,23 +44,23 @@ export function generateMonthlySummary(transactions: Transaction[]) {
   const currentYear = new Date().getFullYear();
 
   const monthTransactions = transactions.filter(t => {
-    const date = new Date(t.created_at);
+    const date = new Date(t.fecha);
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   });
 
   const totalIncome = monthTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(t => t.tipo === 'Ingreso' || t.tipo === 'income')
+    .reduce((sum, t) => sum + t.monto, 0);
 
   const totalExpenses = monthTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(t => t.tipo === 'Egreso' || t.tipo === 'expense')
+    .reduce((sum, t) => sum + t.monto, 0);
 
   const expensesByCategory = monthTransactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.tipo === 'Egreso' || t.tipo === 'expense')
     .reduce((acc, t) => {
-      const category = getCategoryConfig(t.category);
-      acc[category.label] = (acc[category.label] || 0) + t.amount;
+      const categoryName = t.category || 'Sin categoría';
+      acc[categoryName] = (acc[categoryName] || 0) + t.monto;
       return acc;
     }, {} as Record<string, number>);
 

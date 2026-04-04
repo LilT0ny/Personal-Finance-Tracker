@@ -13,6 +13,38 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Crear registro en tabla usuarios si no existe
+async function ensureUsuarioExists(user: User) {
+  try {
+    // Verificar si ya existe el registro
+    const { data: existing } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .single();
+    
+    if (existing) return; // Ya existe
+    
+    // Crear registro con valores por defecto (el usuario lo completará después)
+    const { error: insertError } = await supabase
+      .from('usuarios')
+      .insert({
+        auth_user_id: user.id,
+        email: user.email || '',
+        cedula: 'XXX', // Placeholder temporal
+        nombre: 'Usuario',
+        apellido_paterno: '',
+        fecha_nacimiento: '1990-01-01', // Fecha por defecto
+      });
+    
+    if (insertError) {
+      console.error('Error creating usuario record:', insertError);
+    }
+  } catch (err) {
+    console.error('Error ensuring usuario exists:', err);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -27,10 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Si hay un nuevo usuario, crear registro en usuarios si no existe
+      if (session?.user) {
+        await ensureUsuarioExists(session.user);
+      }
     });
 
     return () => subscription.unsubscribe();

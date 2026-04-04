@@ -8,9 +8,10 @@ interface ChartSectionProps {
 export function ChartSection({ transactions }: ChartSectionProps) {
   // Filter only expenses and group by category
   const expensesByCategory = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.tipo === 'Egreso' || t.tipo === 'expense')
     .reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      const cat = t.category || 'other';
+      acc[cat] = (acc[cat] || 0) + t.monto;
       return acc;
     }, {} as Record<string, number>);
 

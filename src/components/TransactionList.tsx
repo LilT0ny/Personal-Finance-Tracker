@@ -43,10 +43,10 @@ export function TransactionList({ transactions }: TransactionListProps) {
       <h3 className="text-foreground-muted text-sm mb-3">Últimas Transacciones</h3>
       
       {transactions.map((transaction) => {
-        const categoryConfig = getCategoryConfig(transaction.category);
+        const categoryConfig = getCategoryConfig(transaction.category || 'other');
         const Icon = ICON_MAP[categoryConfig.icon] || Circle;
         
-        const isExpense = transaction.type === 'expense';
+        const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
         
         return (
           <div 
@@ -64,17 +64,17 @@ export function TransactionList({ transactions }: TransactionListProps) {
             
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{categoryConfig.label}</p>
-              {transaction.note && (
-                <p className="text-foreground-muted text-xs truncate">{transaction.note}</p>
+              {transaction.descripcion && (
+                <p className="text-foreground-muted text-xs truncate">{transaction.descripcion}</p>
               )}
             </div>
             
             <div className="text-right shrink-0">
               <p className={isExpense ? 'text-danger font-semibold' : 'text-success font-semibold'}>
-                {isExpense ? '-' : '+'}${transaction.amount.toFixed(2)}
+                {isExpense ? '-' : '+'}${transaction.monto.toFixed(2)}
               </p>
               <p className="text-foreground-muted text-xs">
-                {format(new Date(transaction.created_at), 'dd MMM', { locale: es })}
+                {format(new Date(transaction.fecha), 'dd MMM', { locale: es })}
               </p>
             </div>
           </div>

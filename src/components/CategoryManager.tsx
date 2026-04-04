@@ -21,19 +21,19 @@ interface CategoryManagerProps {
 
 export function CategoryManager({ isOpen, onClose }: CategoryManagerProps) {
   const { categories, addCategory, deleteCategory } = useCategories();
-  const [newCategory, setNewCategory] = useState({ label: '', icon: 'UtensilsCrossed', color: '#f97316' });
+  const [newCategory, setNewCategory] = useState({ nombre: '', icono: 'UtensilsCrossed', color: '#f97316' });
   const [showAddForm, setShowAddForm] = useState(false);
 
   const handleAddCategory = async () => {
-    if (!newCategory.label.trim()) return;
+    if (!newCategory.nombre.trim()) return;
     
     await addCategory({
-      label: newCategory.label,
-      icon: newCategory.icon,
+      nombre: newCategory.nombre,
+      icono: newCategory.icono,
       color: newCategory.color,
     });
 
-    setNewCategory({ label: '', icon: 'UtensilsCrossed', color: '#f97316' });
+    setNewCategory({ nombre: '', icono: 'UtensilsCrossed', color: '#f97316' });
     setShowAddForm(false);
   };
 
@@ -58,8 +58,8 @@ export function CategoryManager({ isOpen, onClose }: CategoryManagerProps) {
             
             <input
               type="text"
-              value={newCategory.label}
-              onChange={(e) => setNewCategory({ ...newCategory, label: e.target.value })}
+              value={newCategory.nombre}
+              onChange={(e) => setNewCategory({ ...newCategory, nombre: e.target.value })}
               placeholder="Nombre de la categoría"
               className="input w-full"
             />
@@ -71,10 +71,10 @@ export function CategoryManager({ isOpen, onClose }: CategoryManagerProps) {
                 {ICON_OPTIONS.map(icon => (
                   <button
                     key={icon}
-                    onClick={() => setNewCategory({ ...newCategory, icon })}
+                    onClick={() => setNewCategory({ ...newCategory, icono: icon })}
                     className={cn(
                       "p-2 rounded-lg text-lg",
-                      newCategory.icon === icon ? 'bg-primary text-white' : 'bg-card'
+                      newCategory.icono === icon ? 'bg-primary text-white' : 'bg-card'
                     )}
                   >
                     {icon[0]}
@@ -110,8 +110,8 @@ export function CategoryManager({ isOpen, onClose }: CategoryManagerProps) {
               </button>
               <button
                 onClick={handleAddCategory}
-                disabled={!newCategory.label.trim()}
-                className={cn("btn-primary flex-1", !newCategory.label.trim() && "opacity-50")}
+                disabled={!newCategory.nombre.trim()}
+                className={cn("btn-primary flex-1", !newCategory.nombre.trim() && "opacity-50")}
               >
                 Agregar
               </button>
@@ -137,24 +137,19 @@ export function CategoryManager({ isOpen, onClose }: CategoryManagerProps) {
                   style={{ backgroundColor: `${cat.color}20` }}
                 >
                   <span style={{ color: cat.color }} className="text-lg font-bold">
-                    {cat.label[0]}
+                    {cat.nombre[0]}
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium">{cat.label}</p>
-                  {cat.is_default && (
-                    <p className="text-xs text-foreground-muted">Por defecto</p>
-                  )}
+                  <p className="font-medium">{cat.nombre}</p>
                 </div>
               </div>
-              {!cat.is_default && (
-                <button
-                  onClick={() => deleteCategory(cat.id)}
-                  className="p-2 text-danger hover:bg-danger/10 rounded-lg"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={() => deleteCategory(cat.id)}
+                className="p-2 text-danger hover:bg-danger/10 rounded-lg"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>
