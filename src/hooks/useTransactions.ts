@@ -13,6 +13,17 @@ function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
 }
 
+// Verificar que el usuario existe en la base de datos
+async function verifyUsuarioExists(usuarioId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id')
+    .eq('id', usuarioId)
+    .single();
+  
+  return !error && !!data;
+}
+
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +39,18 @@ export function useTransactions() {
     if (!usuarioId) {
       setTransactions([]);
       setLoading(false);
+      return;
+    }
+
+    // Verificar que el usuario existe
+    const usuarioValido = await verifyUsuarioExists(usuarioId);
+    if (!usuarioValido) {
+      console.warn('Usuario no válido en useTransactions');
+      localStorage.removeItem('usuario_id');
+      localStorage.removeItem('usuario_email');
+      setTransactions([]);
+      setLoading(false);
+      window.location.href = '/';
       return;
     }
 

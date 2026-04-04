@@ -7,6 +7,17 @@ function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
 }
 
+// Verificar que el usuario existe en la base de datos
+async function verifyUsuarioExists(usuarioId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id')
+    .eq('id', usuarioId)
+    .single();
+  
+  return !error && !!data;
+}
+
 export function useCategories() {
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +33,19 @@ export function useCategories() {
 
     try {
       setLoading(true);
+
+      // Verificar que el usuario existe
+      const usuarioValido = await verifyUsuarioExists(usuarioId);
+      if (!usuarioValido) {
+        console.warn('Usuario no válido, limpiando localStorage');
+        localStorage.removeItem('usuario_id');
+        localStorage.removeItem('usuario_email');
+        setCategories([]);
+        setLoading(false);
+        // Redireccionar al login
+        window.location.href = '/';
+        return;
+      }
 
       // Obtener categorías del usuario
       const { data, error } = await supabase
@@ -45,10 +69,15 @@ export function useCategories() {
 
         const { error: insertError } = await supabase
           .from('categorias')
-          .insert(defaultCategories);
+          .upsert(defaultCategories, { onConflict: 'usuario_id,nombre' });
 
         if (insertError) {
-          console.error('Error inserting default categories:', insertError);
+          // Si el error es por conflicto de categorías existentes, solo cargar las existentes
+          if (insertError.code === '409' || insertError.message.includes('duplicate')) {
+            console.log('Categorías ya existen, cargando...');
+          } else {
+            console.error('Error inserting default categories:', insertError);
+          }
         }
 
         // Recargar categorías

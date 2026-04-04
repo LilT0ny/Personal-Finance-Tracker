@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Trash2, Plus, X, Circle, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Edit3, User, Save } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
+import { useTheme } from '../context/ThemeContext';
 import { Categoria, Usuario } from '../types';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -24,7 +25,8 @@ const COLOR_OPTIONS = [
 
 export function ConfigPage() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
-  const [activeTab, setActiveTab] = useState<'perfil' | 'categorias' | 'presupuestos'>('perfil');
+  const { primaryColor, setPrimaryColor, loadingColor: loadingTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'perfil' | 'categorias'>('perfil');
   const usuarioId = localStorage.getItem('usuario_id');
   
   // Usuario state
@@ -40,7 +42,6 @@ export function ConfigPage() {
     apellido_materno: '',
     telefono: '',
     fecha_nacimiento: '',
-    color_primario: '#3b82f6',
   });
 
   // Category modal state
@@ -68,20 +69,12 @@ export function ConfigPage() {
         if (data) {
           setUsuario(data);
           
-          // También obtener los parámetros del sistema para el color
-          const { data: paramData } = await supabase
-            .from('parametros_sistema')
-            .select('color_primario')
-            .eq('usuario_id', data.id)
-            .single();
-          
           setFormPerfil({
             nombre: data.nombre || '',
             apellido_paterno: data.apellido_paterno || '',
             apellido_materno: data.apellido_materno || '',
             telefono: data.telefono || '',
             fecha_nacimiento: data.fecha_nacimiento || '',
-            color_primario: paramData?.color_primario || '#3b82f6',
           });
         }
       } catch (err) {
@@ -114,19 +107,7 @@ export function ConfigPage() {
 
       if (updateError) throw updateError;
 
-      // Actualizar parámetros del sistema
-      const { error: paramError } = await supabase
-        .from('parametros_sistema')
-        .update({
-          color_primario: formPerfil.color_primario,
-        })
-        .eq('usuario_id', usuario.id);
-
-      if (paramError) throw paramError;
-
       setEditandoPerfil(false);
-      // Recargar datos
-      window.location.reload();
     } catch (err) {
       console.error('Error guardando perfil:', err);
       alert('Error al guardar perfil');
@@ -215,17 +196,6 @@ export function ConfigPage() {
           )}
         >
           Categorías
-        </button>
-        <button
-          onClick={() => setActiveTab('presupuestos')}
-          className={cn(
-            "px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap",
-            activeTab === 'presupuestos' 
-              ? 'border-primary text-primary' 
-              : 'border-transparent text-foreground-muted'
-          )}
-        >
-          Presupuestos
         </button>
       </div>
 
@@ -334,12 +304,12 @@ export function ConfigPage() {
                   {['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#22c55e', '#f97316'].map((color) => (
                     <button
                       key={color}
-                      onClick={() => editandoPerfil && setFormPerfil({...formPerfil, color_primario: color})}
-                      disabled={!editandoPerfil}
+                      onClick={() => !loadingTheme && setPrimaryColor(color)}
+                      disabled={loadingTheme}
                       className={cn(
                         "w-8 h-8 rounded-full transition-transform",
-                        formPerfil.color_primario === color && "ring-2 ring-offset-2 ring-primary scale-110",
-                        !editandoPerfil && "opacity-50"
+                        primaryColor === color && "ring-2 ring-offset-2 ring-primary scale-110",
+                        loadingTheme && "opacity-50"
                       )}
                       style={{ backgroundColor: color }}
                     />
@@ -428,45 +398,6 @@ export function ConfigPage() {
               );
             })
           )}
-        </div>
-      )}
-
-      {/* Budgets Tab */}
-      {activeTab === 'presupuestos' && (
-        <div className="space-y-2">
-          <p className="text-foreground-muted text-sm mb-2">
-            Los límites se establecen de forma mensual.
-          </p>
-          
-          {categories.map((cat) => (
-            <div 
-              key={cat.id}
-              className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border"
-            >
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${cat.color}20` }}
-              >
-                <span style={{ color: cat.color }} className="font-bold text-sm">
-                  {cat.nombre[0]}
-                </span>
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">{cat.nombre}</p>
-                <p className="text-xs text-foreground-muted">
-                  {cat.limite_gastos > 0 
-                    ? `$${cat.limite_gastos}/mes`
-                    : 'Sin límite'}
-                </p>
-              </div>
-              <button
-                onClick={() => openCategoryModal(cat)}
-                className="px-3 py-1 rounded-lg text-sm font-medium bg-primary/20 text-primary"
-              >
-                {cat.limite_gastos > 0 ? 'Editar' : 'Agregar'}
-              </button>
-            </div>
-          ))}
         </div>
       )}
 

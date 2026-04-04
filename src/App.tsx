@@ -15,8 +15,9 @@ import { TransactionPageList } from './pages/TransactionPageList';
 import { ConfigPage } from './pages/ConfigPage';
 import { BalanceCard } from './components/BalanceCard';
 import { TransactionList } from './components/TransactionList';
+import { BudgetBuckets } from './components/BudgetBuckets';
 
-type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'config';
+type SidebarSection = 'inicio' | 'presupuesto' | 'ingresos' | 'egresos' | 'config';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,6 +75,8 @@ function Dashboard() {
   // Render current section content
   const renderContent = () => {
     switch (currentSection) {
+      case 'presupuesto':
+        return <BudgetBuckets />;
       case 'ingresos':
         return (
           <TransactionPageList 
@@ -144,6 +147,7 @@ function Dashboard() {
         <header className="lg:hidden mb-4">
           <h1 className="text-xl font-bold">
             {currentSection === 'inicio' && 'Finance Tracker'}
+            {currentSection === 'presupuesto' && 'Presupuesto'}
             {currentSection === 'ingresos' && 'Ingresos'}
             {currentSection === 'egresos' && 'Egresos'}
             {currentSection === 'config' && 'Configuración'}

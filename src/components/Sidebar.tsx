@@ -8,11 +8,12 @@ import {
   LogOut,
   Menu,
   X,
-  PieChart
+  PieChart,
+  Wallet
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'config';
+type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'presupuesto' | 'config';
 
 interface SidebarProps {
   currentSection: SidebarSection;
@@ -35,7 +36,8 @@ export function Sidebar({
     { id: 'inicio' as const, label: 'Inicio', icon: PieChart },
     { id: 'ingresos' as const, label: 'Ingresos', icon: ArrowUpCircle },
     { id: 'egresos' as const, label: 'Egresos', icon: ArrowDownCircle },
-    { id: 'config' as const, label: 'Config', icon: Settings },
+    { id: 'presupuesto' as const, label: 'Presupuesto', icon: Wallet },
+    { id: 'config' as const, label: 'Configuracion', icon: Settings },
   ];
 
   return (
