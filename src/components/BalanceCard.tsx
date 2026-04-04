@@ -420,33 +420,34 @@ export function BalanceCard(props: BalanceCardProps) {
                     const IconComponent = ICON_MAP[item.icon] || Circle;
                     const diff = item.limit - item.spent;
                     const isOver = item.spent > item.limit && item.limit > 0;
-                    // Allow inner bar to exceed 100% when over budget
-                    const innerPct = limitPct > 0 ? (spentPct / limitPct) * 100 : 0;
-                    const containerBorderColor = isOver ? '#ef4444' : theme === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
-                    const containerBg = isOver ? `${item.color}12` : theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
 
                     return (
                       <div key={item.name} className="flex-1 relative h-full flex items-end group">
-                        {/* Outer bar = budget limit container */}
+                        {/* Spent bar - always relative to maxValue (fills to top) */}
                         <div
-                          className="relative w-full rounded-xl flex items-end overflow-hidden transition-all duration-700"
+                          className="relative w-full rounded-t-lg transition-all duration-700 ease-out"
                           style={{
-                            height: `${Math.max(limitPct, 4)}%`,
-                            border: `2px solid ${containerBorderColor}`,
-                            backgroundColor: containerBg,
+                            height: `${Math.max(spentPct, item.spent > 0 ? 2 : 0)}%`,
+                            backgroundColor: item.color,
                           }}
                         >
-                          {/* Inner bar = spent amount, grows from bottom inside outer */}
-                          {item.spent > 0 && (
-                            <div
-                              className="w-full rounded-xl transition-all duration-700 ease-out"
-                              style={{
-                                height: `${innerPct}%`,
-                                backgroundColor: item.color,
-                              }}
-                            />
+                          {/* Alert triangle when over budget */}
+                          {isOver && spentPct > 10 && (
+                            <div className="absolute top-1 left-1/2 -translate-x-1/2">
+                              <AlertTriangle className="w-3 h-3 text-yellow-400 drop-shadow-md" />
+                            </div>
                           )}
                         </div>
+
+                        {/* Limit line marker */}
+                        {item.limit > 0 && limitPct > 0 && (
+                          <div
+                            className="absolute left-0 right-0 z-10 pointer-events-none"
+                            style={{ bottom: `${limitPct}%` }}
+                          >
+                            <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: isOver ? '#ef4444' : theme === 'dark' ? '#ffffff' : '#000000' }} />
+                          </div>
+                        )}
 
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-950 border border-gray-700/80 rounded-xl px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 whitespace-nowrap pointer-events-none shadow-xl shadow-black/50 scale-95 group-hover:scale-100">
