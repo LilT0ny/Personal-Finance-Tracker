@@ -441,7 +441,7 @@ export function BalanceCard(props: BalanceCardProps) {
                           className="relative w-full rounded-xl flex items-end overflow-hidden transition-all duration-700"
                           style={{
                             height: `${Math.max(limitPct, 4)}%`,
-                            border: `2px dashed ${containerBorderColor}`,
+                            border: `2px solid ${containerBorderColor}`,
                             backgroundColor: containerBg,
                           }}
                         >
