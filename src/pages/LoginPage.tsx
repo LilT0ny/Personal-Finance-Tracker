@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowRight, ArrowLeft, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -8,13 +8,11 @@ export function LoginPage() {
   const { signIn, signUp, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [step, setStep] = useState(1); // 1 = login/signup, 2 = perfil
+  const [step, setStep] = useState(1); // 1 = login/signup choice, 2 = login form, 3 = signup form, 4 = complete profile
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
-  // Perfil fields
+  // Profile fields for signup
   const [nombre, setNombre] = useState('');
   const [apellidoPaterno, setApellidoPaterno] = useState('');
   const [apellidoMaterno, setApellidoMaterno] = useState('');
@@ -22,34 +20,71 @@ export function LoginPage() {
   const [telefono, setTelefono] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessMessage(null);
     setSubmitting(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await signUp(email, password);
-        if (error) {
-          setError(error.message);
+      // Primero verificar si existe en la tabla usuarios
+      const { data: usuarioData } = await supabase
+        .from('usuarios')
+        .select('id, email')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (!usuarioData) {
+        setError('No tienes cuenta. Crea una primero.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Ahora sí intentar login en Auth
+      const { error: authError } = await signIn(email, password);
+      
+      if (authError) {
+        if (authError.message.includes('Invalid login credentials')) {
+          setError('Email o contraseña incorrectos');
         } else {
-          setSuccessMessage('¡Revisa tu email para confirmar tu cuenta!');
-          // No avanzar al paso 2 aún - esperar confirmación
-        }
-      } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          setError(error.message);
+          setError(authError.message);
         }
       }
+      // Si no hay error, el usuario quedará logueado y el componente se re-renderiza
+    } catch (err) {
+      console.error('Error en login:', err);
+      setError('Error al iniciar sesión');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCompletePerfil = async () => {
-    if (!email || !nombre.trim() || !apellidoPaterno.trim() || !cedula.trim() || !fechaNacimiento) {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      // Intentar crear cuenta en Supabase Auth
+      const { error: authError } = await signUp(email, password);
+      
+      if (authError) {
+        setError(authError.message);
+        setSubmitting(false);
+        return;
+      }
+      
+      // Si todo bien, ir al paso de completar perfil
+      setStep(4);
+    } catch (err) {
+      console.error('Error en signup:', err);
+      setError('Error al crear cuenta');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCompleteProfile = async () => {
+    if (!nombre.trim() || !apellidoPaterno.trim() || !cedula.trim() || !fechaNacimiento) {
       setError('Por favor completá todos los campos requeridos');
       return;
     }
@@ -58,38 +93,271 @@ export function LoginPage() {
     setError(null);
     
     try {
-      // Intentar crear el usuario en la tabla usuarios
+      // Obtener el usuario actual de Auth
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser) {
+        setError('Sesión expirada. Iniciá sesión nuevamente.');
+        setStep(2);
+        return;
+      }
+      
+      // Crear el registro en la tabla usuarios
       const { error: insertError } = await supabase
         .from('usuarios')
         .insert({
-          auth_user_id: (await supabase.auth.getUser()).data.user?.id,
-          email,
-          cedula,
-          nombre,
-          apellido_paterno: apellidoPaterno,
-          apellido_materno: apellidoMaterno,
-          telefono,
+          auth_user_id: authUser.id,
+          email: email.toLowerCase().trim(),
+          cedula: cedula.trim(),
+          nombre: nombre.trim(),
+          apellido_paterno: apellidoPaterno.trim(),
+          apellido_materno: apellidoMaterno.trim() || null,
+          telefono: telefono.trim() || null,
           fecha_nacimiento: fechaNacimiento,
         });
       
       if (insertError) {
         console.error('Error creando usuario:', insertError);
-        setError('Error al crear perfil. Intentalo de nuevo.');
+        setError('Error al crear perfil: ' + insertError.message);
+        setSubmitting(false);
         return;
       }
       
-      // Recargar la página para que se muestre el dashboard
-      window.location.reload();
+      // Cerrar sesión para que inicie sesión con las credenciales
+      await supabase.auth.signOut();
+      
+      // Limpiar y volver al login
+      setStep(2);
+      setEmail('');
+      setPassword('');
+      setNombre('');
+      setApellidoPaterno('');
+      setApellidoMaterno('');
+      setCedula('');
+      setTelefono('');
+      setFechaNacimiento('');
+      setError(null);
+      alert('¡Cuenta creada! Ahora podés iniciar sesión.');
+      
     } catch (err) {
-      console.error('Error en handleCompletePerfil:', err);
+      console.error('Error en handleCompleteProfile:', err);
       setError('Error al guardar perfil');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Si está en paso 2 (completar perfil), mostrar el formulario de registro
+  // Vista de elección login/signup
+  if (step === 1) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold">Finance Tracker</h1>
+            <p className="text-foreground-muted mt-2">
+              Tu gestor de finanzas personales
+            </p>
+          </div>
+
+          <div className="card space-y-4">
+            <button
+              onClick={() => setStep(2)}
+              className="w-full btn-primary py-4 flex items-center justify-center gap-2"
+            >
+              <Mail className="w-5 h-5" />
+              Iniciar Sesión
+            </button>
+            
+            <button
+              onClick={() => setStep(3)}
+              className="w-full py-4 bg-card border border-border rounded-xl flex items-center justify-center gap-2 hover:bg-background"
+            >
+              <UserPlus className="w-5 h-5" />
+              Crear Cuenta
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vista de login
   if (step === 2) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold">Iniciar Sesión</h1>
+            <p className="text-foreground-muted mt-2">
+              Ingresá a tu cuenta
+            </p>
+          </div>
+
+          <div className="card">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="text-foreground-muted text-sm block mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    className="input w-full pl-10"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-foreground-muted text-sm block mb-2">Contraseña</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="input w-full pl-10"
+                    required
+                    minLength={6}
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-danger text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || loading}
+                className={cn(
+                  "w-full btn-primary py-3 flex items-center justify-center gap-2",
+                  (submitting || loading) && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {submitting || loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  'Iniciar Sesión'
+                )}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  setStep(1);
+                  setError(null);
+                }}
+                className="text-primary hover:underline text-sm"
+              >
+                ← Volver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vista de signup - paso 1 (crear credenciales)
+  if (step === 3) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold">Crear Cuenta</h1>
+            <p className="text-foreground-muted mt-2">
+              Elegí tu email y contraseña
+            </p>
+          </div>
+
+          <div className="card">
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div>
+                <label className="text-foreground-muted text-sm block mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    className="input w-full pl-10"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-foreground-muted text-sm block mb-2">Contraseña</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    className="input w-full pl-10"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-danger text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || loading}
+                className={cn(
+                  "w-full btn-primary py-3 flex items-center justify-center gap-2",
+                  (submitting || loading) && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {submitting || loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Continuar
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  setStep(1);
+                  setError(null);
+                }}
+                className="text-primary hover:underline text-sm"
+              >
+                ← Volver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vista de signup - paso 2 (completar perfil)
+  if (step === 4) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -101,8 +369,7 @@ export function LoginPage() {
           </div>
 
           <div className="card space-y-4">
-            <form onSubmit={(e) => { e.preventDefault(); handleCompletePerfil(); }} className="space-y-4">
-              {/* Cédula */}
+            <form onSubmit={(e) => { e.preventDefault(); handleCompleteProfile(); }} className="space-y-4">
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Cédula *</label>
                 <input
@@ -115,7 +382,6 @@ export function LoginPage() {
                 />
               </div>
 
-              {/* Nombre */}
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Nombre *</label>
                 <input
@@ -128,7 +394,6 @@ export function LoginPage() {
                 />
               </div>
 
-              {/* Apellido Paterno */}
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Apellido Paterno *</label>
                 <input
@@ -141,7 +406,6 @@ export function LoginPage() {
                 />
               </div>
 
-              {/* Apellido Materno */}
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Apellido Materno</label>
                 <input
@@ -153,7 +417,6 @@ export function LoginPage() {
                 />
               </div>
 
-              {/* Teléfono */}
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Teléfono</label>
                 <input
@@ -165,7 +428,6 @@ export function LoginPage() {
                 />
               </div>
 
-              {/* Fecha de nacimiento */}
               <div>
                 <label className="text-foreground-muted text-sm block mb-2">Fecha de Nacimiento *</label>
                 <input
@@ -183,10 +445,10 @@ export function LoginPage() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(3)}
                   className="flex-1 py-3 bg-card border border-border rounded-xl flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="w-5 h-5" />
@@ -203,9 +465,7 @@ export function LoginPage() {
                   {submitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <>
-                      Completar
-                    </>
+                    'Crear Cuenta'
                   )}
                 </button>
               </div>
@@ -216,120 +476,5 @@ export function LoginPage() {
     );
   }
 
-  // Paso 1: Login o Signup
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo / Title */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">Finance Tracker</h1>
-          <p className="text-foreground-muted mt-2">
-            {isSignUp ? 'Crea tu cuenta' : 'Inicia sesión'}
-          </p>
-        </div>
-
-        {/* Form Card */}
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Input */}
-            <div>
-              <label className="text-foreground-muted text-sm block mb-2">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu@email.com"
-                  className="input w-full pl-10"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label className="text-foreground-muted text-sm block mb-2">Contraseña</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input w-full pl-10"
-                  required
-                  minLength={6}
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                />
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-danger text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Success Message */}
-            {successMessage && (
-              <div className="bg-success/10 border border-success/30 rounded-lg p-3 text-success text-sm">
-                {successMessage}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting || loading}
-              className={cn(
-                "w-full btn-primary py-3 flex items-center justify-center gap-2",
-                (submitting || loading) && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              {submitting || loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  {isSignUp ? 'Creando cuenta...' : 'Iniciando sesión...'}
-                </>
-              ) : (
-                isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'
-              )}
-            </button>
-          </form>
-
-          {/* Toggle Sign Up / Sign In */}
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setError(null);
-                setSuccessMessage(null);
-              }}
-              className="text-primary hover:underline text-sm"
-            >
-              {isSignUp 
-                ? '¿Ya tenés cuenta? Inicia sesión' 
-                : '¿No tenés cuenta? Crea una'}
-            </button>
-          </div>
-
-          {/* En signup, mostrar botón para ir a completar perfil */}
-          {isSignUp && successMessage && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <button
-                onClick={() => setStep(2)}
-                className="w-full btn-primary flex items-center justify-center gap-2"
-              >
-                Completar mi perfil
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
