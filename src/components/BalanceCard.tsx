@@ -150,23 +150,26 @@ export function BalanceCard(props: BalanceCardProps) {
     let displaySpent: number;
     let limitValue: number;
     
+    // Only use budget limit if it's explicitly set (not calculated)
+    const hasExplicitBudget = budget && budget.limit_amount > 0;
+    
     if (period === 'day') {
       displaySpent = dailySpent;
-      limitValue = budget?.limit_amount ? budget.limit_amount / 30 : monthlySpent * 0.033;
+      limitValue = hasExplicitBudget ? budget.limit_amount / 30 : 0;
     } else if (period === 'week') {
       displaySpent = weeklySpent;
-      limitValue = budget?.limit_amount ? budget.limit_amount / 4.33 : monthlySpent * 0.25;
+      limitValue = hasExplicitBudget ? budget.limit_amount / 4.33 : 0;
     } else if (period === 'month') {
       displaySpent = monthlySpent;
-      limitValue = budget?.limit_amount || monthlySpent * 1.2;
+      limitValue = hasExplicitBudget ? budget.limit_amount : 0;
     } else if (period === 'year') {
       displaySpent = yearlySpent;
-      limitValue = (budget?.limit_amount || monthlySpent * 12) * 12;
+      limitValue = hasExplicitBudget ? budget.limit_amount * 12 : 0;
     } else {
       displaySpent = allTransactions
         .filter(t => t.category === category && (t.tipo === 'Egreso' || t.tipo === 'expense'))
         .reduce((sum, t) => sum + t.monto, 0);
-      limitValue = displaySpent * 1.2;
+      limitValue = hasExplicitBudget ? displaySpent * 1.2 : 0;
     }
     
     // Get color and icon from categories (either from transactions or from the categories table directly)
@@ -183,7 +186,7 @@ export function BalanceCard(props: BalanceCardProps) {
       icon: categoryIcon,
       isOverBudget: displaySpent > limitValue && limitValue > 0,
     };
-  }).filter(d => d.limit > 0);
+  });
 
   chartData.sort((a, b) => b.spent - a.spent);
   // Use actual max spent for Y-axis (not limit) - bars can overflow past limit
