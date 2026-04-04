@@ -9,7 +9,7 @@ import {
   MoreHorizontal,
   Circle
 } from 'lucide-react';
-import { Transaction, getCategoryConfig } from '../types';
+import { Transaction } from '../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -43,8 +43,12 @@ export function TransactionList({ transactions }: TransactionListProps) {
       <h3 className="text-foreground-muted text-sm mb-3">Últimas Transacciones</h3>
       
       {transactions.map((transaction) => {
-        const categoryConfig = getCategoryConfig(transaction.category || 'other');
-        const Icon = ICON_MAP[categoryConfig.icon] || Circle;
+        // Use category data from database or fallback to config
+        const categoryName = transaction.category || 'Otros';
+        const categoryColor = transaction.category_color || '#6b7280';
+        const categoryIcon = transaction.category_icon || 'Circle';
+        
+        const Icon = ICON_MAP[categoryIcon] || Circle;
         
         const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
         
@@ -55,15 +59,15 @@ export function TransactionList({ transactions }: TransactionListProps) {
           >
             <div 
               className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${categoryConfig.color}20` }}
+              style={{ backgroundColor: `${categoryColor}20` }}
             >
-              <span style={{ color: categoryConfig.color }}>
+              <span style={{ color: categoryColor }}>
                 <Icon className="w-5 h-5" />
               </span>
             </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{categoryConfig.label}</p>
+              <p className="font-medium text-sm truncate">{categoryName}</p>
               {transaction.descripcion && (
                 <p className="text-foreground-muted text-xs truncate">{transaction.descripcion}</p>
               )}
