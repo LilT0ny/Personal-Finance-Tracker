@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
 import { Transaction } from '../types';
 import { useCategories } from '../hooks/useCategories';
 import { Budget } from '../hooks/useBudgets';
+import { useTheme } from '../context/ThemeContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -78,6 +79,7 @@ export function BalanceCard(props: BalanceCardProps) {
   const balance = income - expenses;
   const isPositive = balance >= 0;
   const { categories } = useCategories();
+  const { theme } = useTheme();
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -429,9 +431,8 @@ export function BalanceCard(props: BalanceCardProps) {
                     const diff = item.limit - item.spent;
                     const isOver = item.spent > item.limit && item.limit > 0;
                     
-                    // Determine colors based on theme
-                    const isDark = document.documentElement.classList.contains('dark');
-                    const limitLineColor = isDark ? '#ffffff' : '#000000';
+                    // Limit line color based on theme
+                    const limitLineColor = theme === 'dark' ? '#ffffff' : '#000000';
 
                     return (
                       <div key={item.name} className="flex-1 relative h-full flex items-end group">
@@ -447,12 +448,16 @@ export function BalanceCard(props: BalanceCardProps) {
 
                         {/* Spent bar */}
                         <div
-                          className="relative w-full rounded-t-lg transition-all duration-700 ease-out overflow-hidden"
+                          className="relative w-full rounded-t-lg transition-all duration-700 ease-out overflow-hidden flex flex-col items-center justify-start pt-1"
                           style={{
                             height: `${Math.max(spentPct, item.spent > 0 ? 2 : 0)}%`,
                             backgroundColor: isOver ? item.color : item.color,
                           }}
                         >
+                          {/* Alert triangle when over budget */}
+                          {isOver && (
+                            <AlertTriangle className="w-3 h-3 text-yellow-400 drop-shadow-md" />
+                          )}
                           </div>
 
                           {/* Tooltip */}
