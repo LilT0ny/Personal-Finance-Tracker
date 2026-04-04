@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle, AlertTriangle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
@@ -407,24 +407,36 @@ export function BalanceCard(props: BalanceCardProps) {
                   {chartData.map((item) => {
                     const spentHeight = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
                     const limitHeight = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
-                    const isOver = item.isOverBudget;
                     const IconComponent = ICON_MAP[item.icon] || Circle;
                     const diff = item.limit - item.spent;
                     
                     return (
                       <div key={item.name} className="flex flex-col items-center flex-1 max-w-[60px] group relative">
-                        <div className="relative w-full flex justify-center h-36">
-                          <div 
-                            className="w-6 sm:w-8 rounded-t-md transition-all duration-500"
-                            style={{ 
-                              height: `${spentHeight}%`,
-                              backgroundColor: item.color,
-                              minHeight: item.spent > 0 ? '4px' : '0',
-                              position: 'absolute',
-                              bottom: 0
-                            }}
-                          />
-                          <div className="absolute w-6 sm:w-8 border border-dashed border-white/60" style={{ bottom: `${limitHeight}%` }} />
+                        <div 
+                          className="relative w-full flex flex-col items-center justify-end rounded-t-md transition-all duration-500"
+                          style={{ 
+                            height: `${spentHeight}%`,
+                            backgroundColor: item.color,
+                            minHeight: item.spent > 0 ? '24px' : '0',
+                          }}
+                        >
+                          {/* Limit line */}
+                          <div className="absolute w-full border border-dashed border-white/60" style={{ bottom: `${(limitHeight / spentHeight) * 100}%` }} />
+                          
+                          {/* Content inside bar */}
+                          {spentHeight > 15 && (
+                            <div className="flex flex-col items-center gap-0.5 p-1">
+                              <span className="text-white drop-shadow-md">
+                                <IconComponent className="w-3 h-3" />
+                              </span>
+                              <span className="text-[8px] font-medium text-white text-center truncate w-full drop-shadow-md">
+                                {item.name}
+                              </span>
+                              <span className="text-[8px] font-bold text-white drop-shadow-md">
+                                ${item.spent.toFixed(0)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
@@ -434,19 +446,6 @@ export function BalanceCard(props: BalanceCardProps) {
                           <p className="text-[10px]" style={{ color: diff >= 0 ? '#22c55e' : '#ef4444' }}>
                             {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} restante
                           </p>
-                        </div>
-                        {/* Icon, name, value and alert if over budget */}
-                        <div className="mt-1 flex flex-col items-center gap-0.5">
-                          {isOver && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
-                          <span style={{ color: item.color }}>
-                            <IconComponent className="w-4 h-4" />
-                          </span>
-                          <span className="text-[10px] font-medium truncate w-full text-center" style={{ color: item.color }}>
-                            {item.name}
-                          </span>
-                          <span className="text-[10px] font-bold" style={{ color: item.color }}>
-                            ${item.spent.toFixed(0)}
-                          </span>
                         </div>
                       </div>
                     );
