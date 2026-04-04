@@ -18,9 +18,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.usuarios (
     id                 UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
-    auth_user_id       UUID          UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    auth_user_id       UUID, -- Ahora opcional - no usamos Supabase Auth
     cedula             VARCHAR(13)   UNIQUE NOT NULL,
     email              VARCHAR(255)  UNIQUE NOT NULL,
+    password_hash      TEXT          NOT NULL, -- Hash de contraseña
     nombre             VARCHAR(100)  NOT NULL,
     apellido_paterno   VARCHAR(100)  NOT NULL,
     apellido_materno   VARCHAR(100),
@@ -30,9 +31,8 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     updated_at         TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  public.usuarios              IS 'Perfil extendido de cada usuario autenticado vía Supabase Auth.';
-COMMENT ON COLUMN public.usuarios.auth_user_id IS 'Referencia 1-a-1 con auth.users (Supabase Auth).';
-COMMENT ON COLUMN public.usuarios.cedula       IS 'Cédula o RUC (10-13 dígitos).';
+COMMENT ON TABLE  public.usuarios              IS 'Usuarios del sistema con autenticación propia';
+COMMENT ON COLUMN public.usuarios.password_hash IS 'Hash SHA-256 de la contraseña';
 
 -- -----------------------------------------------------------------------------
 -- FUNCIÓN: fn_calcular_edad

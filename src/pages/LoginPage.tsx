@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, UserPlus, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, UserPlus, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
-// Función simple para hashear password (NO es segura para producción)
-// Para producción usá bcrypt o similar en el backend
+// Función simple para hashear password
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -16,10 +15,14 @@ async function hashPassword(password: string): Promise<string> {
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [step, setStep] = useState(1); // 1 = login/signup choice, 2 = login form, 3 = signup credentials, 4 = complete profile
+  const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Estados para mostrar/ocultar contraseñas
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Perfil fields
   const [nombre, setNombre] = useState('');
@@ -28,9 +31,10 @@ export function LoginPage() {
   const [cedula, setCedula] = useState('');
   const [telefono, setTelefono] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Guardar email para uso temporal
   const [tempEmail, setTempEmail] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +42,6 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      // Buscar usuario por email
       const { data: usuario, error: findError } = await supabase
         .from('usuarios')
         .select('*')
@@ -51,7 +54,6 @@ export function LoginPage() {
         return;
       }
 
-      // Hashear la contraseña ingresada y comparar
       const hashedPassword = await hashPassword(password);
       
       if (usuario.password_hash !== hashedPassword) {
@@ -60,11 +62,9 @@ export function LoginPage() {
         return;
       }
 
-      // Login exitoso - guardar ID en localStorage
       localStorage.setItem('usuario_id', usuario.id);
       localStorage.setItem('usuario_email', usuario.email);
       
-      // Recargar página para que se actualice el estado
       window.location.reload();
       
     } catch (err) {
@@ -82,7 +82,13 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      // Verificar si ya existe el email
+      // Validar que las contraseñas coincidan
+      if (password !== confirmPassword) {
+        setError('Las contraseñas no coinciden');
+        setSubmitting(false);
+        return;
+      }
+
       const { data: existingUsuario } = await supabase
         .from('usuarios')
         .select('id, email')
@@ -95,10 +101,9 @@ export function LoginPage() {
         return;
       }
 
-      // Guardar email temporalmente
       setTempEmail(email.toLowerCase().trim());
+      setTempPassword(password);
       
-      // Ir a completar perfil
       setStep(4);
       
     } catch (err) {
@@ -119,14 +124,12 @@ export function LoginPage() {
     setError(null);
     
     try {
-      // Hashear la contraseña
-      const hashedPassword = await hashPassword(password);
+      const hashedPassword = await hashPassword(tempPassword);
       
-      // Insertar directamente en la tabla usuarios
       const { error: insertError } = await supabase
         .from('usuarios')
         .insert({
-          email: tempEmail || email.toLowerCase().trim(),
+          email: tempEmail,
           password_hash: hashedPassword,
           cedula: cedula.trim(),
           nombre: nombre.trim(),
@@ -143,7 +146,6 @@ export function LoginPage() {
         return;
       }
       
-      // Limpiar y volver al login
       resetForm();
       setStep(2);
       alert('¡Cuenta creada! Iniciá sesión.');
@@ -165,7 +167,9 @@ export function LoginPage() {
     setCedula('');
     setTelefono('');
     setFechaNacimiento('');
+    setConfirmPassword('');
     setTempEmail('');
+    setTempPassword('');
     setError(null);
     setSuccessMessage(null);
   };
@@ -248,15 +252,22 @@ export function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="input w-full pl-10"
+                    className="input w-full pl-10 pr-10"
                     required
                     minLength={6}
                     autoComplete="current-password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
@@ -331,15 +342,46 @@ export function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="input w-full pl-10"
+                    className="input w-full pl-10 pr-10"
                     required
                     minLength={6}
                     autoComplete="new-password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-foreground-muted text-sm block mb-2">Confirmar Contraseña</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-muted" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repetí tu contraseña"
+                    className="input w-full pl-10 pr-10"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 
