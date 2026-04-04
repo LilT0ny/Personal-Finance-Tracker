@@ -189,8 +189,11 @@ export function BalanceCard(props: BalanceCardProps) {
   });
 
   chartData.sort((a, b) => b.spent - a.spent);
+  // Filter to only show categories with expenses (spent > 0)
+  const filteredChartData = chartData.filter(d => d.spent > 0);
+  
   // Use actual max spent for Y-axis (not limit) - bars can overflow past limit
-  const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => d.spent)) : 0;
+  const maxValue = filteredChartData.length > 0 ? Math.max(...filteredChartData.map(d => d.spent)) : 0;
   
   // Y-axis tick values (actual max, not rounded)
   const yAxisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => maxValue * ratio);
@@ -386,12 +389,12 @@ export function BalanceCard(props: BalanceCardProps) {
         </div>
 
 
-        {chartData.length > 0 && (
+        {filteredChartData.length > 0 && (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-foreground-muted text-sm font-medium">Gastos por Categoría</h3>
               <span className="text-[10px] text-foreground-muted bg-background/80 border border-border/50 px-2 py-0.5 rounded-full">
-                {chartData.length} categorías
+                {filteredChartData.length} categorías
               </span>
             </div>
             <div className="bg-background/50 rounded-xl p-4 border border-border/50">
@@ -417,7 +420,7 @@ export function BalanceCard(props: BalanceCardProps) {
 
                   {/* Bars */}
                   <div className="absolute inset-0 flex items-end justify-around gap-1 px-1">
-                  {chartData.map((item) => {
+                  {filteredChartData.map((item) => {
                     const spentPct = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
                     const limitPct = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
                     const IconComponent = ICON_MAP[item.icon] || Circle;
