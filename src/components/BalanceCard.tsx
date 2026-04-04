@@ -419,7 +419,6 @@ export function BalanceCard(props: BalanceCardProps) {
                     const limitPct = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
                     const IconComponent = ICON_MAP[item.icon] || Circle;
                     const diff = item.limit - item.spent;
-                    const isOver = item.spent > item.limit && item.limit > 0;
 
                     return (
                       <div key={item.name} className="flex-1 relative h-full flex items-end group">
@@ -430,22 +429,21 @@ export function BalanceCard(props: BalanceCardProps) {
                             height: `${Math.max(spentPct, item.spent > 0 ? 2 : 0)}%`,
                             backgroundColor: item.color,
                           }}
-                        >
-                          {/* Alert triangle when over budget */}
-                          {isOver && spentPct > 10 && (
-                            <div className="absolute top-1 left-1/2 -translate-x-1/2">
-                              <AlertTriangle className="w-3 h-3 text-yellow-400 drop-shadow-md" />
-                            </div>
-                          )}
-                        </div>
+                        />
 
                         {/* Limit line marker */}
                         {item.limit > 0 && limitPct > 0 && (
                           <div
-                            className="absolute left-0 right-0 z-10 pointer-events-none"
+                            className="absolute left-0 right-0 z-10 pointer-events-none flex justify-center"
                             style={{ bottom: `${limitPct}%` }}
                           >
-                            <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: isOver ? '#ef4444' : theme === 'dark' ? '#ffffff' : '#000000' }} />
+                            {/* Alert triangle at limit line when over budget */}
+                            {item.spent > item.limit && (
+                              <div className="bg-background dark:bg-gray-900 rounded-full p-0.5 -mt-3">
+                                <AlertTriangle className="w-3 h-3" style={{ color: item.color }} />
+                              </div>
+                            )}
+                            <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: theme === 'dark' ? '#ffffff' : '#000000' }} />
                           </div>
                         )}
 
