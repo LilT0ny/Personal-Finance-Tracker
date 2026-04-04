@@ -413,10 +413,6 @@ export function BalanceCard(props: BalanceCardProps) {
                     
                     return (
                       <div key={item.name} className="flex flex-col items-center flex-1 max-w-[60px] group relative">
-                        {/* Value on top of bar */}
-                        <span className="text-[10px] font-bold mb-1" style={{ color: item.color }}>
-                          ${item.spent.toFixed(0)}
-                        </span>
                         <div className="relative w-full flex justify-center h-36">
                           <div 
                             className="w-6 sm:w-8 rounded-t-md transition-all duration-500"
@@ -439,7 +435,7 @@ export function BalanceCard(props: BalanceCardProps) {
                             {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} restante
                           </p>
                         </div>
-                        {/* Icon, name and alert if over budget */}
+                        {/* Icon, name, value and alert if over budget */}
                         <div className="mt-1 flex flex-col items-center gap-0.5">
                           {isOver && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
                           <span style={{ color: item.color }}>
@@ -448,17 +444,15 @@ export function BalanceCard(props: BalanceCardProps) {
                           <span className="text-[10px] font-medium truncate w-full text-center" style={{ color: item.color }}>
                             {item.name}
                           </span>
+                          <span className="text-[10px] font-bold" style={{ color: item.color }}>
+                            ${item.spent.toFixed(0)}
+                          </span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            </div>
-            <div className="mt-2 text-center">
-              <span className="text-xs text-foreground-muted">
-                Límite: ${chartData[0]?.limit.toFixed(0) || 0} ({periodLabelText})
-              </span>
             </div>
           </div>
         )}
