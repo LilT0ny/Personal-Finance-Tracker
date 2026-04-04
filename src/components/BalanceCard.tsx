@@ -3,7 +3,7 @@ import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
-import { Transaction, getCategoryConfig } from '../types';
+import { Transaction } from '../types';
 import { useCategories } from '../hooks/useCategories';
 import { Budget } from '../hooks/useBudgets';
 import { format } from 'date-fns';
@@ -139,7 +139,6 @@ export function BalanceCard(props: BalanceCardProps) {
   const allCategories = [...new Set([...budgetCategories, ...allTransactions.map(t => t.category || '')])];
   
   const chartData = allCategories.filter(Boolean).map(category => {
-    const config = getCategoryConfig(category || 'other');
     const budget = budgets.find(b => b.category === category && b.type === 'expense');
     const dailySpent = getDailySpent(allTransactions, category || 'other');
     const weeklySpent = getWeeklySpent(allTransactions, category || 'other');
@@ -168,12 +167,17 @@ export function BalanceCard(props: BalanceCardProps) {
       limitValue = displaySpent * 1.2;
     }
     
+    // Get color and icon from transaction data instead of static config
+    const categoryTransactions = allTransactions.filter(t => t.category === category);
+    const categoryColor = categoryTransactions[0]?.category_color || '#6b7280';
+    const categoryIcon = categoryTransactions[0]?.category_icon || 'Circle';
+    
     return {
-      name: config.label,
+      name: category || 'Otros',
       spent: displaySpent,
       limit: limitValue,
-      color: config.color,
-      icon: config.icon,
+      color: categoryColor,
+      icon: categoryIcon,
       isOverBudget: displaySpent > limitValue && limitValue > 0,
     };
   }).filter(d => d.limit > 0);

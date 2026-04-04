@@ -1,4 +1,4 @@
-import { Transaction, getCategoryConfig } from '../types';
+import { Transaction } from '../types';
 import { Budget } from '../hooks/useBudgets';
 import { PeriodFilter } from '../hooks/useTransactions';
 
@@ -75,7 +75,6 @@ export function CategoryBudgetChart({ transactions, budgets, period }: CategoryB
   
   // Prepare chart data
   const chartData = allCategories.filter(Boolean).map(category => {
-    const config = getCategoryConfig(category || 'other');
     const budget = budgets.find(b => b.category === category && b.type === 'expense');
     const dailySpent = getDailySpent(transactions, category || 'other');
     const weeklySpent = getWeeklySpent(transactions, category || 'other');
@@ -110,12 +109,16 @@ export function CategoryBudgetChart({ transactions, budgets, period }: CategoryB
       limitValue = displaySpent * 1.2;
     }
     
+    // Get color from transaction data instead of static config
+    const categoryTransactions = transactions.filter(t => t.category === category);
+    const categoryColor = categoryTransactions[0]?.category_color || '#6b7280';
+    
     return {
-      name: config.label,
+      name: category || 'Otros',
       spent: displaySpent,
       limit: limitValue,
       category: category,
-      color: config.color,
+      color: categoryColor,
       isOverBudget: displaySpent > limitValue && limitValue > 0,
     };
   }).filter(d => d.limit > 0); // Only show categories with limits
