@@ -393,64 +393,113 @@ export function BalanceCard(props: BalanceCardProps) {
 
         {chartData.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-foreground-muted text-sm text-center mb-4">Gastos por Categoría</h3>
-            <div className="bg-background/50 rounded-xl p-3 border border-border/50">
-              <div className="flex">
-                {/* Y-axis labels */}
-                <div className="flex flex-col justify-between h-40 py-2 pr-2 text-[10px] text-foreground-muted">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-foreground-muted text-sm font-medium">Gastos por Categoría</h3>
+              <span className="text-[10px] text-foreground-muted bg-background/80 border border-border/50 px-2 py-0.5 rounded-full">
+                {chartData.length} categorías
+              </span>
+            </div>
+            <div className="bg-background/50 rounded-xl p-4 border border-border/50">
+              {/* Row 1: Y-axis + bars */}
+              <div className="flex gap-1">
+                {/* Y-axis labels — only spans bar height */}
+                <div className="flex flex-col justify-between h-56 py-1 pr-2 text-[9px] text-foreground-muted shrink-0 w-10 text-right">
                   {yAxisTicks.slice().reverse().map((val, i) => (
-                    <span key={i}>${val.toFixed(0)}</span>
+                    <span key={i} className="leading-none">${val >= 1000 ? `${(val/1000).toFixed(1)}k` : val.toFixed(0)}</span>
                   ))}
                 </div>
-                {/* Chart bars */}
-                <div className="flex-1 flex items-end justify-around gap-2 h-40">
+
+                {/* Bars area */}
+                <div className="flex-1 relative h-56">
+                  {/* Horizontal grid lines */}
+                  {yAxisTicks.map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-full border-t border-border/30"
+                      style={{ bottom: `${(i / (yAxisTicks.length - 1)) * 100}%` }}
+                    />
+                  ))}
+
+                  {/* Bars */}
+                  <div className="absolute inset-0 flex items-end justify-around gap-1 px-1">
                   {chartData.map((item) => {
-                    const spentHeight = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
-                    const limitHeight = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
+                    const spentPct = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
+                    const limitPct = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
                     const IconComponent = ICON_MAP[item.icon] || Circle;
                     const diff = item.limit - item.spent;
+                    const isOver = item.spent > item.limit && item.limit > 0;
                     
+                    // Determine colors based on theme
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const limitLineColor = isDark ? '#ffffff' : '#000000';
+
                     return (
-                      <div key={item.name} className="flex flex-col items-center flex-1 max-w-[60px] group relative">
-                        <div 
-                          className="relative w-full flex flex-col items-center justify-end rounded-t-md transition-all duration-500"
-                          style={{ 
-                            height: `${spentHeight}%`,
-                            backgroundColor: item.color,
-                            minHeight: item.spent > 0 ? '24px' : '0',
+                      <div key={item.name} className="flex-1 relative h-full flex items-end group">
+                        {/* Limit marker line — positioned within the bar container */}
+                        {item.limit > 0 && limitPct > 0 && (
+                          <div
+                            className="absolute left-0 right-0 z-10"
+                            style={{ bottom: `${limitPct}%` }}
+                          >
+                            <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: isOver ? '#ef4444' : limitLineColor }} />
+                          </div>
+                        )}
+
+                        {/* Spent bar */}
+                        <div
+                          className="relative w-full rounded-t-lg transition-all duration-700 ease-out overflow-hidden"
+                          style={{
+                            height: `${Math.max(spentPct, item.spent > 0 ? 2 : 0)}%`,
+                            backgroundColor: isOver ? item.color : item.color,
                           }}
                         >
-                          {/* Limit line */}
-                          <div className="absolute w-full border border-dashed border-white/60" style={{ bottom: `${(limitHeight / spentHeight) * 100}%` }} />
-                          
-                          {/* Content inside bar */}
-                          {spentHeight > 15 && (
-                            <div className="flex flex-col items-center gap-0.5 p-1">
-                              <span className="text-white drop-shadow-md">
-                                <IconComponent className="w-3 h-3" />
-                              </span>
-                              <span className="text-[8px] font-medium text-white text-center truncate w-full drop-shadow-md">
-                                {item.name}
-                              </span>
-                              <span className="text-[8px] font-bold text-white drop-shadow-md">
-                                ${item.spent.toFixed(0)}
-                              </span>
+                          </div>
+
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-950 border border-gray-700/80 rounded-xl px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 whitespace-nowrap pointer-events-none shadow-xl shadow-black/50 scale-95 group-hover:scale-100">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span style={{ color: item.color }}><IconComponent className="w-3 h-3" /></span>
+                              <p className="text-xs font-bold" style={{ color: item.color }}>{item.name}</p>
                             </div>
-                          )}
+                            <div className="space-y-0.5">
+                              <p className="text-[10px] text-gray-400">Gastado: <span className="font-semibold text-white">${item.spent.toFixed(2)}</span></p>
+                              <p className="text-[10px] text-gray-400">Límite: <span className="font-semibold text-gray-200">${item.limit.toFixed(2)}</span></p>
+                              <p className="text-[10px] font-semibold" style={{ color: diff >= 0 ? '#4ade80' : '#f87171' }}>
+                                {diff >= 0 ? `✓ +$${diff.toFixed(2)} disponible` : `⚠ $${Math.abs(diff).toFixed(2)} excedido`}
+                              </p>
+                            </div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-1 overflow-hidden">
+                              <div className="w-2 h-2 bg-gray-950 border-r border-b border-gray-700/80 rotate-45 -translate-y-1" />
+                            </div>
+                          </div>
                         </div>
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
-                          <p className="text-xs font-semibold" style={{ color: item.color }}>{item.name}</p>
-                          <p className="text-[10px] text-gray-300">Gastado: <span className="font-medium" style={{ color: item.color }}>${item.spent.toFixed(2)}</span></p>
-                          <p className="text-[10px] text-gray-300">Límite: <span className="font-medium">${item.limit.toFixed(2)}</span></p>
-                          <p className="text-[10px]" style={{ color: diff >= 0 ? '#22c55e' : '#ef4444' }}>
-                            {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} restante
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+              </div>
+
+              {/* Row 2: X-axis labels — offset by Y-axis width (w-10 + gap = ~44px) */}
+              <div className="flex justify-around gap-1 mt-2 border-t border-border/30 pt-2" style={{ paddingLeft: '44px' }}>
+                {chartData.map((item) => {
+                  const IconComponent = ICON_MAP[item.icon] || Circle;
+                  return (
+                    <div key={item.name} className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${item.color}25`, color: item.color }}
+                      >
+                        <IconComponent className="w-3 h-3" />
+                      </div>
+                      <span className="text-[9px] text-foreground-muted text-center truncate w-full leading-tight">
+                        {item.name}
+                      </span>
+                      <span className="text-[9px] font-bold text-center" style={{ color: item.color }}>
+                        ${item.spent >= 1000 ? `${(item.spent / 1000).toFixed(1)}k` : item.spent.toFixed(0)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
