@@ -167,10 +167,11 @@ export function BalanceCard(props: BalanceCardProps) {
       limitValue = displaySpent * 1.2;
     }
     
-    // Get color and icon from transaction data instead of static config
+    // Get color and icon from categories (either from transactions or from the categories table directly)
     const categoryTransactions = allTransactions.filter(t => t.category === category);
-    const categoryColor = categoryTransactions[0]?.category_color || '#6b7280';
-    const categoryIcon = categoryTransactions[0]?.category_icon || 'Circle';
+    const categoryData = categories.find(c => c.nombre === category);
+    const categoryColor = categoryTransactions[0]?.category_color || categoryData?.color || '#6b7280';
+    const categoryIcon = categoryTransactions[0]?.category_icon || categoryData?.icono || 'Circle';
     
     return {
       name: category || 'Otros',
