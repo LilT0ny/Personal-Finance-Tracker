@@ -3,7 +3,6 @@ import { Settings as SettingsIcon, Trash2, Plus, X, Circle, UtensilsCrossed, Car
 import { useCategories } from '../hooks/useCategories';
 import { Categoria, Usuario } from '../types';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 const ICON_OPTIONS = [
@@ -25,8 +24,8 @@ const COLOR_OPTIONS = [
 
 export function ConfigPage() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'perfil' | 'categorias' | 'presupuestos'>('perfil');
+  const usuarioId = localStorage.getItem('usuario_id');
   
   // Usuario state
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -54,14 +53,14 @@ export function ConfigPage() {
 
   // Cargar datos del usuario
   useEffect(() => {
-    if (!user) return;
+    if (!usuarioId) return;
     
     const fetchUsuario = async () => {
       try {
         const { data, error } = await supabase
-          .from('v_usuarios_perfil')
+          .from('usuarios')
           .select('*')
-          .eq('auth_user_id', user.id)
+          .eq('id', usuarioId)
           .single();
         
         if (error) throw error;
@@ -93,11 +92,11 @@ export function ConfigPage() {
     };
 
     fetchUsuario();
-  }, [user]);
+  }, [usuarioId]);
 
   // Guardar perfil
   const handleGuardarPerfil = async () => {
-    if (!user || !usuario) return;
+    if (!usuarioId || !usuario) return;
     
     setGuardandoPerfil(true);
     try {
@@ -255,7 +254,7 @@ export function ConfigPage() {
                 <label className="text-foreground-muted text-sm block mb-1">Email</label>
                 <input
                   type="email"
-                  value={user?.email || ''}
+                  value={usuario?.email || localStorage.getItem('usuario_email') || ''}
                   disabled
                   className="input w-full opacity-60"
                 />

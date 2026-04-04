@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, Trash2 } from 'lucide-react';
 import { useBudgets } from '../hooks/useBudgets';
-import { CATEGORIES } from '../types';
+import { useCategories } from '../hooks/useCategories';
 import { cn } from '../lib/utils';
 
 interface BudgetManagerProps {
@@ -11,6 +11,7 @@ interface BudgetManagerProps {
 
 export function BudgetManager({ isOpen, onClose }: BudgetManagerProps) {
   const { budgets, addBudget, deleteBudget } = useBudgets();
+  const { categories } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [limitAmount, setLimitAmount] = useState('');
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('monthly');
@@ -20,7 +21,7 @@ export function BudgetManager({ isOpen, onClose }: BudgetManagerProps) {
     if (!selectedCategory || !limitAmount) return;
     
     await addBudget({
-      category: selectedCategory,
+      categoria_id: selectedCategory,
       limit_amount: parseFloat(limitAmount),
       period,
       type,
@@ -31,8 +32,8 @@ export function BudgetManager({ isOpen, onClose }: BudgetManagerProps) {
     setLimitAmount('');
   };
 
-  const availableCategories = CATEGORIES.filter(
-    cat => !budgets.some(b => b.category === cat.id && b.type === type && b.period === period)
+  const availableCategories = categories.filter(
+    cat => !budgets.some(b => b.categoria_id === cat.id && b.type === type && b.period === period)
   );
 
   if (!isOpen) return null;
@@ -77,7 +78,7 @@ export function BudgetManager({ isOpen, onClose }: BudgetManagerProps) {
           >
             <option value="">Seleccionar categoría</option>
             {availableCategories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.label}</option>
+              <option key={cat.id} value={cat.id}>{cat.nombre}</option>
             ))}
           </select>
 
@@ -116,11 +117,11 @@ export function BudgetManager({ isOpen, onClose }: BudgetManagerProps) {
             <p className="text-center text-foreground-muted py-4">No hay presupuestos configurados</p>
           ) : (
             budgets.map(budget => {
-              const category = CATEGORIES.find(c => c.id === budget.category);
+              const category = categories.find(c => c.id === budget.categoria_id);
               return (
                 <div key={budget.id} className="flex items-center justify-between p-3 bg-background rounded-xl">
                   <div>
-                    <p className="font-medium">{category?.label || budget.category}</p>
+                    <p className="font-medium">{category?.nombre || 'Sin categoría'}</p>
                     <p className="text-xs text-foreground-muted">
                       ${budget.limit_amount} / {budget.period === 'weekly' ? 'semana' : 'mes'}
                     </p>

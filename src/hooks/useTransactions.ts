@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Transaction } from '../types';
-import { useAuth } from '../context/AuthContext';
 
 export type PeriodFilter = 'day' | 'week' | 'month' | 'year' | 'all' | 'custom';
 
 export interface CustomDateRange {
   startDate: Date;
   endDate: Date;
+}
+
+function getUsuarioId(): string | null {
+  return localStorage.getItem('usuario_id');
 }
 
 export function useTransactions() {
@@ -17,11 +20,12 @@ export function useTransactions() {
   const [period, setPeriod] = useState<PeriodFilter>('month');
   const [customDateRange, setCustomDateRange] = useState<CustomDateRange | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const { user } = useAuth();
 
   // Fetch transactions
   const fetchTransactions = async () => {
-    if (!user) {
+    const usuarioId = getUsuarioId();
+    
+    if (!usuarioId) {
       setTransactions([]);
       setLoading(false);
       return;
@@ -30,18 +34,6 @@ export function useTransactions() {
     try {
       setLoading(true);
       setError(null);
-
-      // Obtener el usuario_id de la tabla usuarios
-      const { data: usuarioData, error: usuarioError } = await supabase
-        .from('usuarios')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (usuarioError) throw usuarioError;
-      if (!usuarioData) throw new Error('Usuario no encontrado');
-
-      const usuarioId = usuarioData.id;
 
       // Obtener transacciones con join de categorías
       const { data, error: fetchError } = await supabase
@@ -99,27 +91,18 @@ export function useTransactions() {
     type: 'income' | 'expense',
     note?: string
   ) => {
-    if (!user) {
+    const usuarioId = getUsuarioId();
+    if (!usuarioId) {
       throw new Error('Debes iniciar sesión para agregar transacciones');
     }
 
     try {
       setError(null);
 
-      // Obtener el usuario_id
-      const { data: usuarioData, error: usuarioError } = await supabase
-        .from('usuarios')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (usuarioError) throw usuarioError;
-      if (!usuarioData) throw new Error('Usuario no encontrado');
-
       const { data, error: insertError } = await supabase
         .from('transacciones')
         .insert({
-          usuario_id: usuarioData.id,
+          usuario_id: usuarioId,
           categoria_id: categoryId,
           monto: amount,
           tipo: type === 'income' ? 'Ingreso' : 'Egreso',
@@ -132,99 +115,91 @@ export function useTransactions() {
       if (insertError) throw insertError;
 
       if (data) {
-        // Refrescar la lista
         await fetchTransactions();
       }
 
       return data;
     } catch (err) {
       console.error('Error adding transaction:', err);
-      setError(err instanceof Error ? err.message : 'Error al guardar transacción');
+      setError('Error al guardar transacción');
       throw err;
     }
+  };
+
+  // Delete transaction
+  const deleteTransaction = async (id: string) => {
+    const { error } = await supabase
+      .from('transacciones')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    await fetchTransactions();
   };
 
   // Filter transactions by period
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     let startDate: Date;
-    let endDate: Date | undefined;
 
-    if (period === 'custom' && customDateRange) {
-      startDate = customDateRange.startDate;
-      endDate = customDateRange.endDate;
-    } else {
-      switch (period) {
-        case 'day':
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case 'week':
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - now.getDay());
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case 'month':
+    switch (period) {
+      case 'day':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'custom':
+        if (customDateRange) {
+          startDate = customDateRange.startDate;
+        } else {
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case 'year':
-          startDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        case 'all':
-        default:
-          return transactions;
-      }
+        }
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    if (endDate) {
-      endDate.setHours(23, 59, 59, 999);
-      return transactions.filter(t => {
-        const txDate = new Date(t.fecha);
-        return txDate >= startDate && txDate <= endDate!;
-      });
+    let filtered = transactions.filter(t => new Date(t.fecha) >= startDate);
+
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(t => t.categoria_id === categoryFilter);
     }
 
-    return transactions.filter(t => new Date(t.fecha) >= startDate);
-  }, [transactions, period, customDateRange]);
+    return filtered;
+  }, [transactions, period, customDateRange, categoryFilter]);
 
-  // Filter by category
-  const filteredByCategory = useMemo(() => {
-    if (categoryFilter === 'all') return filteredTransactions;
-    return filteredTransactions.filter(t => t.categoria_id === categoryFilter);
-  }, [filteredTransactions, categoryFilter]);
+  // Calculate totals
+  const { income, expenses, allTransactions } = useMemo(() => {
+    const income = filteredTransactions
+      .filter(t => t.tipo === 'Ingreso' || t.tipo === 'income')
+      .reduce((sum, t) => sum + t.monto, 0);
 
-  // Calculate totals based on filtered transactions
-  const income = filteredByCategory
-    .filter(t => t.tipo === 'Ingreso')
-    .reduce((sum, t) => sum + t.monto, 0);
+    const expenses = filteredTransactions
+      .filter(t => t.tipo === 'Egreso' || t.tipo === 'expense')
+      .reduce((sum, t) => sum + t.monto, 0);
 
-  const expenses = filteredByCategory
-    .filter(t => t.tipo === 'Egreso')
-    .reduce((sum, t) => sum + t.monto, 0);
+    return { income, expenses, allTransactions: filteredTransactions };
+  }, [filteredTransactions]);
 
-  // Calculate all-time totals
-  const totalIncome = transactions
-    .filter(t => t.tipo === 'Ingreso')
-    .reduce((sum, t) => sum + t.monto, 0);
-
-  const totalExpenses = transactions
-    .filter(t => t.tipo === 'Egreso')
-    .reduce((sum, t) => sum + t.monto, 0);
-
-  // Fetch when user changes
   useEffect(() => {
     fetchTransactions();
-  }, [user?.id]);
+  }, []);
 
   return {
     transactions: filteredTransactions,
-    allTransactions: transactions,
+    allTransactions,
     loading,
     error,
     income,
     expenses,
-    totalIncome,
-    totalExpenses,
     period,
     setPeriod,
     customDateRange,
@@ -232,6 +207,7 @@ export function useTransactions() {
     categoryFilter,
     setCategoryFilter,
     addTransaction,
+    deleteTransaction,
     refetch: fetchTransactions,
   };
 }

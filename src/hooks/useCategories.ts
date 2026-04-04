@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
 import { Categoria, PREDEFINED_CATEGORIES } from '../types';
+
+// Obtener usuario_id desde localStorage
+function getUsuarioId(): string | null {
+  return localStorage.getItem('usuario_id');
+}
 
 export function useCategories() {
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
 
   const fetchCategories = async () => {
-    if (!user) {
+    const usuarioId = getUsuarioId();
+    
+    if (!usuarioId) {
       setCategories([]);
       setLoading(false);
       return;
@@ -17,29 +22,6 @@ export function useCategories() {
 
     try {
       setLoading(true);
-
-      // Obtener el usuario_id de la tabla usuarios
-      const { data: usuarioData, error: usuarioError } = await supabase
-        .from('usuarios')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (usuarioError) {
-        console.error('Error fetching usuario:', usuarioError);
-        setCategories([]);
-        setLoading(false);
-        return;
-      }
-      
-      if (!usuarioData) {
-        console.warn('Usuario no encontrado, saltando fetch de categorías');
-        setCategories([]);
-        setLoading(false);
-        return;
-      }
-
-      const usuarioId = usuarioData.id;
 
       // Obtener categorías del usuario
       const { data, error } = await supabase
@@ -83,7 +65,6 @@ export function useCategories() {
           setCategories(newData || []);
         }
       } else {
-        console.log('Categories loaded:', data.length);
         setCategories(data);
       }
     } catch (err) {
@@ -100,21 +81,13 @@ export function useCategories() {
     color: string;
     limite_gastos?: number;
   }) => {
-    if (!user) throw new Error('Debes iniciar sesión');
-
-    // Obtener usuario_id
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single();
-
-    if (usuarioError) throw usuarioError;
+    const usuarioId = getUsuarioId();
+    if (!usuarioId) throw new Error('Debes iniciar sesión');
 
     const { data, error } = await supabase
       .from('categorias')
       .insert({
-        usuario_id: usuarioData.id,
+        usuario_id: usuarioId,
         nombre: category.nombre,
         icono: category.icono,
         color: category.color,
@@ -135,8 +108,6 @@ export function useCategories() {
     color?: string;
     limite_gastos?: number;
   }) => {
-    if (!user) throw new Error('Debes iniciar sesión');
-
     const { error } = await supabase
       .from('categorias')
       .update(updates)
@@ -147,8 +118,6 @@ export function useCategories() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!user) throw new Error('Debes iniciar sesión');
-
     const { error } = await supabase
       .from('categorias')
       .delete()
@@ -158,14 +127,13 @@ export function useCategories() {
     await fetchCategories();
   };
 
-  // Obtener categoría por ID
   const getCategoryById = (id: string): Categoria | undefined => {
     return categories.find(c => c.id === id);
   };
 
   useEffect(() => {
     fetchCategories();
-  }, [user?.id]);
+  }, []);
 
   return {
     categories,

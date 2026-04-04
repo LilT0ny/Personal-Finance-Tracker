@@ -55,7 +55,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         const limit = limits[catId];
         if (limit && limit > 0 && category) {
           await addBudget({
-            category: predefined.label,
+            categoria_id: category.id,
             limit_amount: limit,
             period: 'monthly',
             type: 'expense',
@@ -75,7 +75,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       const limit = limits[cat.id];
       if (limit && limit > 0 && category) {
         await addBudget({
-          category: cat.label,
+          categoria_id: category.id,
           limit_amount: limit,
           period: 'monthly',
           type: 'expense',
