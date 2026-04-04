@@ -437,12 +437,7 @@ export function BalanceCard(props: BalanceCardProps) {
                             className="absolute left-0 right-0 z-10 pointer-events-none flex justify-center"
                             style={{ bottom: `${limitPct}%` }}
                           >
-                            {/* Alert triangle at limit line when over budget */}
-                            {item.spent > item.limit && (
-                              <div className="bg-background dark:bg-gray-900 rounded-full p-0.5 -mt-3">
-                                <AlertTriangle className="w-3 h-3" style={{ color: item.color }} />
-                              </div>
-                            )}
+
                             <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: theme === 'dark' ? '#ffffff' : '#000000' }} />
                           </div>
                         )}
