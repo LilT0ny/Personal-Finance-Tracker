@@ -5,9 +5,10 @@
 // Usuario del sistema
 export interface Usuario {
   id: string;
-  auth_user_id: string;
+  auth_user_id?: string; // Opcional - ahora no usamos Supabase Auth
   cedula: string;
   email: string;
+  password_hash: string; // Hash de contraseña
   nombre: string;
   apellido_paterno: string;
   apellido_materno?: string;

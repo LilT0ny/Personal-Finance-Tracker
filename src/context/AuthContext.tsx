@@ -1,13 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-// Tiempo de inactividad antes de cerrar sesión (30 minutos)
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos en ms
-
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: { id: string; email: string } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -17,55 +12,40 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Crear registro en tabla usuarios si no existe
-async function ensureUsuarioExists(user: User) {
-  try {
-    // Verificar si ya existe el registro
-    const { data: existing } = await supabase
-      .from('usuarios')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single();
-    
-    if (existing) return; // Ya existe
-    
-    // Crear registro con valores por defecto (el usuario lo completará después)
-    const { error: insertError } = await supabase
-      .from('usuarios')
-      .insert({
-        auth_user_id: user.id,
-        email: user.email || '',
-        cedula: 'XXX', // Placeholder temporal
-        nombre: 'Usuario',
-        apellido_paterno: '',
-        fecha_nacimiento: '1990-01-01', // Fecha por defecto
-      });
-    
-    if (insertError) {
-      console.error('Error creating usuario record:', insertError);
-    }
-  } catch (err) {
-    console.error('Error ensuring usuario exists:', err);
-  }
-}
+// Tiempo de inactividad antes de cerrar sesión (30 minutos)
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastActivity, setLastActivity] = useState<number>(Date.now());
+
+  // Verificar sesión al cargar
+  useEffect(() => {
+    const checkSession = () => {
+      const usuarioId = localStorage.getItem('usuario_id');
+      const usuarioEmail = localStorage.getItem('usuario_email');
+      
+      if (usuarioId && usuarioEmail) {
+        setUser({ id: usuarioId, email: usuarioEmail });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+    
+    checkSession();
+  }, []);
 
   // Función para cerrar sesión por inactividad
   const handleInactivitySignOut = useCallback(async () => {
     if (user) {
-      console.log('Cerrando sesión por inactividad');
-      await supabase.auth.signOut();
+      localStorage.removeItem('usuario_id');
+      localStorage.removeItem('usuario_email');
       setUser(null);
-      setSession(null);
     }
   }, [user]);
 
-  // Resetear el timer de inactividad
   const resetInactivityTimer = useCallback(() => {
     setLastActivity(Date.now());
   }, []);
@@ -81,13 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Verificar cada minuto
     const interval = setInterval(checkInactivity, 60000);
-
     return () => clearInterval(interval);
   }, [user, lastActivity, handleInactivitySignOut]);
 
-  // Escuchar eventos de actividad del usuario
+  // Escuchar eventos de actividad
   useEffect(() => {
     if (!user) return;
 
@@ -108,47 +86,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // Si hay un nuevo usuario, crear registro en usuarios si no existe
-      if (session?.user) {
-        await ensureUsuarioExists(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Función simple para hashear password
+  async function hashPassword(password: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    // Resetear timer al hacer login
-    setLastActivity(Date.now());
-    return { error: error as Error | null };
+    try {
+      // Buscar usuario por email
+      const { data: usuario, error: findError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('email', email.toLowerCase().trim())
+        .single();
+
+      if (findError || !usuario) {
+        return { error: new Error('Usuario no encontrado') };
+      }
+
+      // Hashear y comparar contraseña
+      const hashedPassword = await hashPassword(password);
+      
+      if (usuario.password_hash !== hashedPassword) {
+        return { error: new Error('Contraseña incorrecta') };
+      }
+
+      // Guardar en localStorage
+      localStorage.setItem('usuario_id', usuario.id);
+      localStorage.setItem('usuario_email', usuario.email);
+      setUser({ id: usuario.id, email: usuario.email });
+      
+      setLastActivity(Date.now());
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error as Error | null };
+  const signUp = async (_email: string, _password: string) => {
+    // No usamos Supabase Auth, solo manejamos el flujo local
+    // El signup real se hace en el LoginPage
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('usuario_id');
+    localStorage.removeItem('usuario_email');
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetInactivityTimer }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetInactivityTimer }}>
       {children}
     </AuthContext.Provider>
   );

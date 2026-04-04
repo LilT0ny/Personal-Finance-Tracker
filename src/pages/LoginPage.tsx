@@ -1,18 +1,25 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, UserPlus, CheckCircle, AlertCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Mail, Lock, Loader2, UserPlus, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
+// Función simple para hashear password (NO es segura para producción)
+// Para producción usá bcrypt o similar en el backend
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function LoginPage() {
-  const { signIn, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(1); // 1 = login/signup choice, 2 = login form, 3 = signup credentials, 4 = complete profile
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [needsProfile, setNeedsProfile] = useState(false);
   
   // Perfil fields
   const [nombre, setNombre] = useState('');
@@ -22,21 +29,8 @@ export function LoginPage() {
   const [telefono, setTelefono] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
 
-  // Check if user needs to complete profile
-  const checkProfileNeeded = async (userEmail: string) => {
-    try {
-      // Find user by email in usuarios table
-      const { data: usuario } = await supabase
-        .from('usuarios')
-        .select('id')
-        .eq('email', userEmail.toLowerCase().trim())
-        .single();
-      
-      setNeedsProfile(!usuario);
-    } catch (err) {
-      setNeedsProfile(true);
-    }
-  };
+  // Guardar email para uso temporal
+  const [tempEmail, setTempEmail] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,29 +38,35 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      // Verificar si existe en la tabla usuarios
-      const { data: usuarioData } = await supabase
+      // Buscar usuario por email
+      const { data: usuario, error: findError } = await supabase
         .from('usuarios')
-        .select('id, email')
+        .select('*')
         .eq('email', email.toLowerCase().trim())
         .single();
 
-      if (!usuarioData) {
+      if (findError || !usuario) {
         setError('No tienes cuenta. Crea una primero.');
         setSubmitting(false);
         return;
       }
 
-      // Intentar login en Auth
-      const { error: authError } = await signIn(email, password);
+      // Hashear la contraseña ingresada y comparar
+      const hashedPassword = await hashPassword(password);
       
-      if (authError) {
-        if (authError.message.includes('Invalid login credentials')) {
-          setError('Email o contraseña incorrectos');
-        } else {
-          setError(authError.message);
-        }
+      if (usuario.password_hash !== hashedPassword) {
+        setError('Email o contraseña incorrectos');
+        setSubmitting(false);
+        return;
       }
+
+      // Login exitoso - guardar ID en localStorage
+      localStorage.setItem('usuario_id', usuario.id);
+      localStorage.setItem('usuario_email', usuario.email);
+      
+      // Recargar página para que se actualice el estado
+      window.location.reload();
+      
     } catch (err) {
       console.error('Error en login:', err);
       setError('Error al iniciar sesión');
@@ -82,7 +82,7 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      // Verificar si ya existe el email en usuarios
+      // Verificar si ya existe el email
       const { data: existingUsuario } = await supabase
         .from('usuarios')
         .select('id, email')
@@ -95,25 +95,10 @@ export function LoginPage() {
         return;
       }
 
-      // Crear cuenta en Supabase Auth (SIN confirmación de email)
-      const { error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: undefined
-        }
-      });
+      // Guardar email temporalmente
+      setTempEmail(email.toLowerCase().trim());
       
-      if (authError) {
-        setError(authError.message);
-        setSubmitting(false);
-        return;
-      }
-      
-      // Guardar email para usar después
-      localStorage.setItem('signupEmail', email.toLowerCase().trim());
-      
-      // Ir directamente a completar perfil
+      // Ir a completar perfil
       setStep(4);
       
     } catch (err) {
@@ -134,48 +119,15 @@ export function LoginPage() {
     setError(null);
     
     try {
-      // Obtener el email guardado o el actual
-      const savedEmail = localStorage.getItem('signupEmail') || email.toLowerCase().trim();
+      // Hashear la contraseña
+      const hashedPassword = await hashPassword(password);
       
-      // Buscar el usuario en Auth por email
-      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-      
-      if (usersError) {
-        console.error('Error listando usuarios:', usersError);
-        setError('Error al verificar cuenta');
-        setSubmitting(false);
-        return;
-      }
-      
-      const authUser = users?.find(u => u.email?.toLowerCase() === savedEmail.toLowerCase());
-      
-      if (!authUser) {
-        setError('Tu cuenta no fue creada. Intentá de nuevo.');
-        setSubmitting(false);
-        return;
-      }
-      
-      // Verificar si ya existe perfil
-      const { data: existing } = await supabase
-        .from('usuarios')
-        .select('id')
-        .eq('auth_user_id', authUser.id)
-        .single();
-      
-      if (existing) {
-        localStorage.removeItem('signupEmail');
-        alert('Tu perfil ya existe. Iniciá sesión.');
-        setStep(2);
-        setSubmitting(false);
-        return;
-      }
-      
-      // Crear perfil
+      // Insertar directamente en la tabla usuarios
       const { error: insertError } = await supabase
         .from('usuarios')
         .insert({
-          auth_user_id: authUser.id,
-          email: savedEmail,
+          email: tempEmail || email.toLowerCase().trim(),
+          password_hash: hashedPassword,
           cedula: cedula.trim(),
           nombre: nombre.trim(),
           apellido_paterno: apellidoPaterno.trim(),
@@ -185,13 +137,11 @@ export function LoginPage() {
         });
       
       if (insertError) {
-        setError('Error al crear perfil: ' + insertError.message);
+        console.error('Error inserting:', insertError);
+        setError('Error al crear cuenta: ' + insertError.message);
         setSubmitting(false);
         return;
       }
-      
-      // Limpiar
-      localStorage.removeItem('signupEmail');
       
       // Limpiar y volver al login
       resetForm();
@@ -215,7 +165,7 @@ export function LoginPage() {
     setCedula('');
     setTelefono('');
     setFechaNacimiento('');
-    setNeedsProfile(false);
+    setTempEmail('');
     setError(null);
     setSuccessMessage(null);
   };
@@ -275,23 +225,6 @@ export function LoginPage() {
             </p>
           </div>
 
-          {needsProfile && (
-            <div className="mb-4 bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium">Necesitás completar tu perfil</p>
-                  <button
-                    onClick={() => setStep(4)}
-                    className="mt-2 text-sm text-primary hover:underline"
-                  >
-                    Completar ahora →
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="card">
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
@@ -301,7 +234,7 @@ export function LoginPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); checkProfileNeeded(e.target.value); }}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@email.com"
                     className="input w-full pl-10"
                     required
@@ -335,13 +268,13 @@ export function LoginPage() {
 
               <button
                 type="submit"
-                disabled={submitting || loading}
+                disabled={submitting}
                 className={cn(
                   "w-full btn-primary py-3 flex items-center justify-center gap-2",
-                  (submitting || loading) && "opacity-50 cursor-not-allowed"
+                  submitting && "opacity-50 cursor-not-allowed"
                 )}
               >
-                {submitting || loading ? (
+                {submitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   'Iniciar Sesión'
@@ -418,13 +351,13 @@ export function LoginPage() {
 
               <button
                 type="submit"
-                disabled={submitting || loading}
+                disabled={submitting}
                 className={cn(
                   "w-full btn-primary py-3 flex items-center justify-center gap-2",
-                  (submitting || loading) && "opacity-50 cursor-not-allowed"
+                  submitting && "opacity-50 cursor-not-allowed"
                 )}
               >
-                {submitting || loading ? (
+                {submitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   'Continuar'
