@@ -102,8 +102,16 @@ export function Sidebar({
 
           {/* Sign out */}
           <button
-            onClick={() => {
-              onSignOut();
+            onClick={async () => {
+              console.log('Cerrando sesión...');
+              try {
+                await onSignOut();
+                console.log('Sesión cerrada, redirigiendo...');
+                // Redirigir al login
+                window.location.href = '/';
+              } catch (err) {
+                console.error('Error al cerrar sesión:', err);
+              }
               setIsOpen(false);
             }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-danger/10 text-danger transition-all"
