@@ -394,63 +394,65 @@ export function BalanceCard(props: BalanceCardProps) {
         {chartData.length > 0 && (
           <div className="mt-6">
             <h3 className="text-foreground-muted text-sm text-center mb-4">Gastos por Categoría</h3>
-            <div className="flex">
-              {/* Y-axis labels */}
-              <div className="flex flex-col justify-between h-40 py-2 pr-2 text-[10px] text-foreground-muted">
-                {yAxisTicks.slice().reverse().map((val, i) => (
-                  <span key={i}>${val.toFixed(0)}</span>
-                ))}
-              </div>
-              {/* Chart bars */}
-              <div className="flex-1 flex items-end justify-around gap-2 h-40">
-                {chartData.map((item) => {
-                  const spentHeight = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
-                  const limitHeight = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
-                  const isOver = item.isOverBudget;
-                  const IconComponent = ICON_MAP[item.icon] || Circle;
-                  const diff = item.limit - item.spent;
-                  
-                  return (
-                    <div key={item.name} className="flex flex-col items-center flex-1 max-w-[60px] group relative">
-                      {/* Value on top of bar */}
-                      <span className="text-[10px] font-bold mb-1" style={{ color: item.color }}>
-                        ${item.spent.toFixed(0)}
-                      </span>
-                      <div className="relative w-full flex justify-center h-36">
-                        <div 
-                          className="w-6 sm:w-8 rounded-t-md transition-all duration-500"
-                          style={{ 
-                            height: `${spentHeight}%`,
-                            backgroundColor: item.color,
-                            minHeight: item.spent > 0 ? '4px' : '0',
-                            position: 'absolute',
-                            bottom: 0
-                          }}
-                        />
-                        <div className="absolute w-6 sm:w-8 border border-dashed border-white/60" style={{ bottom: `${limitHeight}%` }} />
-                      </div>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
-                        <p className="text-xs font-semibold" style={{ color: item.color }}>{item.name}</p>
-                        <p className="text-[10px] text-gray-300">Gastado: <span className="font-medium" style={{ color: item.color }}>${item.spent.toFixed(2)}</span></p>
-                        <p className="text-[10px] text-gray-300">Límite: <span className="font-medium">${item.limit.toFixed(2)}</span></p>
-                        <p className="text-[10px]" style={{ color: diff >= 0 ? '#22c55e' : '#ef4444' }}>
-                          {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} restante
-                        </p>
-                      </div>
-                      {/* Icon, name and alert if over budget */}
-                      <div className="mt-1 flex flex-col items-center gap-0.5">
-                        {isOver && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
-                        <span style={{ color: item.color }}>
-                          <IconComponent className="w-4 h-4" />
+            <div className="bg-background/50 rounded-xl p-3 border border-border/50">
+              <div className="flex">
+                {/* Y-axis labels */}
+                <div className="flex flex-col justify-between h-40 py-2 pr-2 text-[10px] text-foreground-muted">
+                  {yAxisTicks.slice().reverse().map((val, i) => (
+                    <span key={i}>${val.toFixed(0)}</span>
+                  ))}
+                </div>
+                {/* Chart bars */}
+                <div className="flex-1 flex items-end justify-around gap-2 h-40">
+                  {chartData.map((item) => {
+                    const spentHeight = maxValue > 0 ? (item.spent / maxValue) * 100 : 0;
+                    const limitHeight = maxValue > 0 ? (item.limit / maxValue) * 100 : 0;
+                    const isOver = item.isOverBudget;
+                    const IconComponent = ICON_MAP[item.icon] || Circle;
+                    const diff = item.limit - item.spent;
+                    
+                    return (
+                      <div key={item.name} className="flex flex-col items-center flex-1 max-w-[60px] group relative">
+                        {/* Value on top of bar */}
+                        <span className="text-[10px] font-bold mb-1" style={{ color: item.color }}>
+                          ${item.spent.toFixed(0)}
                         </span>
-                        <span className="text-[10px] font-medium truncate w-full text-center" style={{ color: item.color }}>
-                          {item.name}
-                        </span>
+                        <div className="relative w-full flex justify-center h-36">
+                          <div 
+                            className="w-6 sm:w-8 rounded-t-md transition-all duration-500"
+                            style={{ 
+                              height: `${spentHeight}%`,
+                              backgroundColor: item.color,
+                              minHeight: item.spent > 0 ? '4px' : '0',
+                              position: 'absolute',
+                              bottom: 0
+                            }}
+                          />
+                          <div className="absolute w-6 sm:w-8 border border-dashed border-white/60" style={{ bottom: `${limitHeight}%` }} />
+                        </div>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap pointer-events-none">
+                          <p className="text-xs font-semibold" style={{ color: item.color }}>{item.name}</p>
+                          <p className="text-[10px] text-gray-300">Gastado: <span className="font-medium" style={{ color: item.color }}>${item.spent.toFixed(2)}</span></p>
+                          <p className="text-[10px] text-gray-300">Límite: <span className="font-medium">${item.limit.toFixed(2)}</span></p>
+                          <p className="text-[10px]" style={{ color: diff >= 0 ? '#22c55e' : '#ef4444' }}>
+                            {diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)} restante
+                          </p>
+                        </div>
+                        {/* Icon, name and alert if over budget */}
+                        <div className="mt-1 flex flex-col items-center gap-0.5">
+                          {isOver && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
+                          <span style={{ color: item.color }}>
+                            <IconComponent className="w-4 h-4" />
+                          </span>
+                          <span className="text-[10px] font-medium truncate w-full text-center" style={{ color: item.color }}>
+                            {item.name}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="mt-2 text-center">
