@@ -186,8 +186,8 @@ export function BalanceCard(props: BalanceCardProps) {
   }).filter(d => d.limit > 0);
 
   chartData.sort((a, b) => b.spent - a.spent);
-  // Use actual max value for Y-axis (not rounded)
-  const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.spent, d.limit))) : 0;
+  // Use actual max spent for Y-axis (not limit) - bars can overflow past limit
+  const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => d.spent)) : 0;
   
   // Y-axis tick values (actual max, not rounded)
   const yAxisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => maxValue * ratio);
@@ -420,7 +420,8 @@ export function BalanceCard(props: BalanceCardProps) {
                     const IconComponent = ICON_MAP[item.icon] || Circle;
                     const diff = item.limit - item.spent;
                     const isOver = item.spent > item.limit && item.limit > 0;
-                    const innerPct = limitPct > 0 ? Math.min((spentPct / limitPct) * 100, 100) : 0;
+                    // Allow inner bar to exceed 100% when over budget
+                    const innerPct = limitPct > 0 ? (spentPct / limitPct) * 100 : 0;
                     const containerBorderColor = isOver ? '#ef4444' : theme === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
                     const containerBg = isOver ? `${item.color}12` : theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
 
