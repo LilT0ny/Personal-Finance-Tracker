@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
@@ -392,7 +392,7 @@ export function BalanceCard(props: BalanceCardProps) {
                         className="w-6 sm:w-8 rounded-t-md transition-all duration-500"
                         style={{ 
                           height: `${spentHeight}%`,
-                          backgroundColor: isOver ? '#ef4444' : item.color,
+                          backgroundColor: item.color,
                           minHeight: item.spent > 0 ? '4px' : '0',
                           position: 'absolute',
                           bottom: 0
@@ -400,8 +400,9 @@ export function BalanceCard(props: BalanceCardProps) {
                       />
                       <div className="absolute w-6 sm:w-8 border border-dashed border-white/60" style={{ bottom: `${limitHeight}%` }} />
                     </div>
-                    {/* Icon and name */}
+                    {/* Icon, name and alert if over budget */}
                     <div className="mt-1 flex flex-col items-center gap-0.5">
+                      {isOver && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
                       <span style={{ color: item.color }}>
                         <IconComponent className="w-4 h-4" />
                       </span>
