@@ -443,7 +443,7 @@ export function BalanceCard(props: BalanceCardProps) {
                                 <AlertTriangle className="w-3 h-3" style={{ color: item.color }} />
                               </div>
                             )}
-                            <div className="w-full border-t-2 border-solid opacity-75" style={{ borderColor: theme === 'dark' ? '#ffffff' : '#000000' }} />
+                            <div className="w-full border-t-2 border-dashed opacity-75" style={{ borderColor: theme === 'dark' ? '#ffffff' : '#000000' }} />
                           </div>
                         )}
 
