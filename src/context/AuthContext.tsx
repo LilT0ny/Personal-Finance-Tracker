@@ -1,6 +1,9 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+
+// Tiempo de inactividad antes de cerrar sesión (30 minutos)
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos en ms
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +12,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetInactivityTimer: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +53,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+
+  // Función para cerrar sesión por inactividad
+  const handleInactivitySignOut = useCallback(async () => {
+    if (user) {
+      console.log('Cerrando sesión por inactividad');
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+    }
+  }, [user]);
+
+  // Resetear el timer de inactividad
+  const resetInactivityTimer = useCallback(() => {
+    setLastActivity(Date.now());
+  }, []);
+
+  // Efecto para monitorear inactividad
+  useEffect(() => {
+    if (!user) return;
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      if (now - lastActivity > INACTIVITY_TIMEOUT) {
+        handleInactivitySignOut();
+      }
+    };
+
+    // Verificar cada minuto
+    const interval = setInterval(checkInactivity, 60000);
+
+    return () => clearInterval(interval);
+  }, [user, lastActivity, handleInactivitySignOut]);
+
+  // Escuchar eventos de actividad del usuario
+  useEffect(() => {
+    if (!user) return;
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [user]);
 
   useEffect(() => {
     // Check active session
@@ -75,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Resetear timer al hacer login
+    setLastActivity(Date.now());
     return { error: error as Error | null };
   };
 
@@ -88,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetInactivityTimer }}>
       {children}
     </AuthContext.Provider>
   );
