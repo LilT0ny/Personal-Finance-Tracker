@@ -73,7 +73,10 @@ export function LoginPage() {
         return;
       }
       
-      // Si todo bien, ir al paso de completar perfil
+      // Guardar email para usar después cuando complete el perfil
+      localStorage.setItem('pendingProfileEmail', email.toLowerCase().trim());
+      
+      // Ir al paso de completar perfil
       setStep(4);
     } catch (err) {
       console.error('Error en signup:', err);
@@ -93,11 +96,39 @@ export function LoginPage() {
     setError(null);
     
     try {
-      // Obtener el usuario actual de Auth
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Obtener el email guardado
+      const savedEmail = localStorage.getItem('pendingProfileEmail') || email.toLowerCase().trim();
+      
+      // Buscar el usuario en auth.users por email (primero verificamos que exista)
+      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+      
+      if (usersError) {
+        console.error('Error listando usuarios:', usersError);
+        setError('Error al verificar cuenta');
+        setSubmitting(false);
+        return;
+      }
+      
+      const authUser = users.find(u => u.email?.toLowerCase() === savedEmail.toLowerCase());
       
       if (!authUser) {
-        setError('Sesión expirada. Iniciá sesión nuevamente.');
+        setError('Tu cuenta no fue creada. Intentá de nuevo.');
+        localStorage.removeItem('pendingProfileEmail');
+        setStep(1);
+        return;
+      }
+      
+      // Verificar si el usuario ya existe en nuestra tabla usuarios
+      const { data: existingUsuario } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('auth_user_id', authUser.id)
+        .single();
+      
+      if (existingUsuario) {
+        // Ya existe,可以直接登录
+        localStorage.removeItem('pendingProfileEmail');
+        alert('¡Tu cuenta ya existe! Iniciá sesión.');
         setStep(2);
         return;
       }
@@ -107,7 +138,7 @@ export function LoginPage() {
         .from('usuarios')
         .insert({
           auth_user_id: authUser.id,
-          email: email.toLowerCase().trim(),
+          email: savedEmail,
           cedula: cedula.trim(),
           nombre: nombre.trim(),
           apellido_paterno: apellidoPaterno.trim(),
@@ -123,10 +154,10 @@ export function LoginPage() {
         return;
       }
       
-      // Cerrar sesión para que inicie sesión con las credenciales
-      await supabase.auth.signOut();
+      // Limpiar
+      localStorage.removeItem('pendingProfileEmail');
       
-      // Limpiar y volver al login
+      // Limpiar campos y volver al login
       setStep(2);
       setEmail('');
       setPassword('');
