@@ -183,7 +183,21 @@ export function BalanceCard(props: BalanceCardProps) {
   }).filter(d => d.limit > 0);
 
   chartData.sort((a, b) => b.spent - a.spent);
-  const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.spent, d.limit))) : 0;
+  // Round up to nice numbers for the Y-axis
+  const rawMaxValue = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.spent, d.limit))) : 0;
+  const roundToNice = (val: number) => {
+    if (val === 0) return 0;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(val)));
+    const normalized = val / magnitude;
+    if (normalized <= 1.5) return 1.5 * magnitude;
+    if (normalized <= 3) return 3 * magnitude;
+    if (normalized <= 5) return 5 * magnitude;
+    return 10 * magnitude;
+  };
+  const maxValue = roundToNice(rawMaxValue);
+  
+  // Y-axis tick values
+  const yAxisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => maxValue * ratio);
   
   const periodLabelText = period === 'custom' && customDateRange 
     ? `${customDateRange.startDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${customDateRange.endDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
@@ -382,9 +396,9 @@ export function BalanceCard(props: BalanceCardProps) {
             <div className="flex">
               {/* Y-axis labels */}
               <div className="flex flex-col justify-between h-40 py-2 pr-2 text-[10px] text-foreground-muted">
-                <span>${maxValue.toFixed(0)}</span>
-                <span>${(maxValue / 2).toFixed(0)}</span>
-                <span>$0</span>
+                {yAxisTicks.slice().reverse().map((val, i) => (
+                  <span key={i}>${val.toFixed(0)}</span>
+                ))}
               </div>
               {/* Chart bars */}
               <div className="flex-1 flex items-end justify-around gap-2 h-40">
