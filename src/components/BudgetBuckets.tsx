@@ -327,9 +327,8 @@ export function BudgetBuckets() {
             Total: {totalPercentage}% {isValidPercentage ? 'OK' : 'Revisar'}
           </span>
         </div>
-
-        {/* Sliders */}
-        <div className="space-y-4">
+          <div className="space-y-4">
+        <div className="card mb-4">
           {/* Necesidades */}
           <div>
             <div className="flex justify-between text-sm mb-1">
@@ -376,7 +375,8 @@ export function BudgetBuckets() {
               </div>
             </div>
           </div>
-
+        </div>
+        <div className="card mb-4">
           {/* Deseos */}
           <div>
             <div className="flex justify-between text-sm mb-1">
@@ -423,7 +423,8 @@ export function BudgetBuckets() {
               </div>
             </div>
           </div>
-
+        </div>
+        <div className="card mb-4">
           {/* Ahorro */}
           <div>
             <div className="flex justify-between text-sm mb-1">
@@ -471,16 +472,8 @@ export function BudgetBuckets() {
             </div>
           </div>
         </div>
-
-        {/* Distribucion visual */}
-        <div className="flex h-2 mt-4 rounded-full overflow-hidden">
-          <div className="bg-blue-500" style={{ width: `${percentages.necesidades}%` }} />
-          <div className="bg-violet-500" style={{ width: `${percentages.deseos}%` }} />
-          <div className="bg-green-500" style={{ width: `${percentages.ahorro}%` }} />
-        </div>
+        </div>     
       </div>
-
-      
 
       {/* Modal para editar categorías */}
       {editingBucket && (
