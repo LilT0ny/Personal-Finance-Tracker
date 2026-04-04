@@ -451,7 +451,7 @@ export function BalanceCard(props: BalanceCardProps) {
                               className="w-full rounded-xl transition-all duration-700 ease-out"
                               style={{
                                 height: `${innerPct}%`,
-                                backgroundColor: isOver ? '#ef4444' : item.color,
+                                backgroundColor: item.color,
                               }}
                             />
                           )}
