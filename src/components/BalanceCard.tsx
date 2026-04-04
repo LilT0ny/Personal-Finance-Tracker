@@ -186,20 +186,10 @@ export function BalanceCard(props: BalanceCardProps) {
   }).filter(d => d.limit > 0);
 
   chartData.sort((a, b) => b.spent - a.spent);
-  // Round up to nice numbers for the Y-axis
-  const rawMaxValue = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.spent, d.limit))) : 0;
-  const roundToNice = (val: number) => {
-    if (val === 0) return 0;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(val)));
-    const normalized = val / magnitude;
-    if (normalized <= 1.5) return 1.5 * magnitude;
-    if (normalized <= 3) return 3 * magnitude;
-    if (normalized <= 5) return 5 * magnitude;
-    return 10 * magnitude;
-  };
-  const maxValue = roundToNice(rawMaxValue);
+  // Use actual max value for Y-axis (not rounded)
+  const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.spent, d.limit))) : 0;
   
-  // Y-axis tick values
+  // Y-axis tick values (actual max, not rounded)
   const yAxisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => maxValue * ratio);
   
   const periodLabelText = period === 'custom' && customDateRange 
