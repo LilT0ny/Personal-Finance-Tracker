@@ -1,27 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Wallet, TrendingUp, PiggyBank, Settings, AlertTriangle } from 'lucide-react';
+import { Wallet, TrendingUp, PiggyBank, Settings, Plus, X, Check } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
+import { useCategories } from '../hooks/useCategories';
 import { cn } from '../lib/utils';
 
 // =====================================================
 // CONFIGURACIÓN DE BALDES - Regla 50/30/20
 // =====================================================
 
-// Categorías por defecto que van a cada balde
-const BUCKET_CATEGORIES = {
-  operativo: ['food', 'transport', 'utilities', 'health', 'entertainment', 'shopping', 'other'],
-  crecimiento: [], // El usuario define estas categorías
-  ahorro: ['savings'],
-};
-
 export interface BucketPercentages {
-  operativo: number;
-  crecimiento: number;
+  necesidades: number;
+  deseos: number;
   ahorro: number;
 }
 
+export interface BucketCategories {
+  necesidades: string[];
+  deseos: string[];
+  ahorro: string[];
+}
+
 interface BucketData {
-  id: 'operativo' | 'crecimiento' | 'ahorro';
+  id: 'necesidades' | 'deseos' | 'ahorro';
   name: string;
   description: string;
   icon: React.ElementType;
@@ -34,9 +34,10 @@ interface BucketData {
 
 export function BudgetBuckets() {
   const { transactions, income: realIncome, period } = useTransactions();
+  const { categories: userCategories } = useCategories();
 
   // Estado para el "sueldo imaginario" (ingreso base para freelancers)
-  const [baseIncome, setBaseIncome] = useState<number>(() => {
+  const [baseIncome] = useState<number>(() => {
     const saved = localStorage.getItem('budget_baseIncome');
     return saved ? parseFloat(saved) : 0;
   });
@@ -44,14 +45,21 @@ export function BudgetBuckets() {
   // Estado para los porcentajes de cada balde (50/30/20 por defecto)
   const [percentages, setPercentages] = useState<BucketPercentages>(() => {
     const saved = localStorage.getItem('budget_percentages');
-    return saved ? JSON.parse(saved) : { operativo: 50, crecimiento: 30, ahorro: 20 };
+    return saved ? JSON.parse(saved) : { necesidades: 50, deseos: 30, ahorro: 20 };
   });
 
-  // Estado para categorías personalizadas de crecimiento (solo lectura por ahora)
-  const [growthCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('budget_growthCategories');
-    return saved ? JSON.parse(saved) : [];
+  // Estado para las categorías de cada balde
+  const [bucketCategories, setBucketCategories] = useState<BucketCategories>(() => {
+    const saved = localStorage.getItem('budget_bucketCategories');
+    return saved ? JSON.parse(saved) : {
+      necesidades: ['food', 'transport', 'utilities', 'health', 'other'],
+      deseos: ['entertainment', 'shopping'],
+      ahorro: ['savings']
+    };
   });
+
+  // Estado para mostrar el modal de editar categorías
+  const [editingBucket, setEditingBucket] = useState<'necesidades' | 'deseos' | 'ahorro' | null>(null);
 
   // Guardar en localStorage cuando cambien
   useEffect(() => {
@@ -63,8 +71,47 @@ export function BudgetBuckets() {
   }, [percentages]);
 
   useEffect(() => {
-    localStorage.setItem('budget_growthCategories', JSON.stringify(growthCategories));
-  }, [growthCategories]);
+    localStorage.setItem('budget_bucketCategories', JSON.stringify(bucketCategories));
+  }, [bucketCategories]);
+
+  // Handler para actualizar porcentajes
+  const handlePercentageChange = (bucket: keyof BucketPercentages, value: number) => {
+    setPercentages(prev => ({
+      ...prev,
+      [bucket]: Math.max(0, Math.min(100, value)),
+    }));
+  };
+
+  // Obtener todas las categorías ya asignadas a algún balde
+  const assignedCategories = useMemo(() => {
+    return [
+      ...bucketCategories.necesidades,
+      ...bucketCategories.deseos,
+      ...bucketCategories.ahorro
+    ];
+  }, [bucketCategories]);
+
+  // Agregar categoría a un balde
+  const addCategoryToBucket = (bucketId: 'necesidades' | 'deseos' | 'ahorro', categoryId: string) => {
+    const newBucketCategories = { ...bucketCategories };
+    for (const key of Object.keys(newBucketCategories) as Array<keyof BucketCategories>) {
+      if (key !== bucketId) {
+        newBucketCategories[key] = newBucketCategories[key].filter(c => c !== categoryId);
+      }
+    }
+    if (!newBucketCategories[bucketId].includes(categoryId)) {
+      newBucketCategories[bucketId].push(categoryId);
+    }
+    setBucketCategories(newBucketCategories);
+  };
+
+  // Remover categoría de un balde
+  const removeCategoryFromBucket = (bucketId: 'necesidades' | 'deseos' | 'ahorro', categoryId: string) => {
+    setBucketCategories(prev => ({
+      ...prev,
+      [bucketId]: prev[bucketId].filter(c => c !== categoryId)
+    }));
+  };
 
   // Calcular el ingreso total (real o imaginario)
   const totalIncome = useMemo(() => {
@@ -77,7 +124,6 @@ export function BudgetBuckets() {
       return [];
     }
 
-    // Filtrar transacciones del período actual
     const now = new Date();
     let startDate: Date;
 
@@ -103,121 +149,57 @@ export function BudgetBuckets() {
       t => (t.tipo === 'Egreso' || t.tipo === 'expense') && new Date(t.fecha) >= startDate
     );
 
-    // Calcular gastos por balde
-    const calculateBucketSpent = (bucketCategories: string[]) => {
+    const calculateBucketSpent = (bucketCategoriesArr: string[]) => {
       return periodExpenses
-        .filter(t => bucketCategories.includes(t.categoria_id))
+        .filter(t => bucketCategoriesArr.includes(t.categoria_id))
         .reduce((sum, t) => sum + t.monto, 0);
     };
 
-    // Combinar categorías por defecto con las personalizadas de crecimiento
-    const crecimientoCategories = [...BUCKET_CATEGORIES.crecimiento, ...growthCategories];
-
-    const operativoSpent = calculateBucketSpent(BUCKET_CATEGORIES.operativo);
-    const crecimientoSpent = calculateBucketSpent(crecimientoCategories);
-    const ahorroSpent = calculateBucketSpent(BUCKET_CATEGORIES.ahorro);
+    const necesidadesSpent = calculateBucketSpent(bucketCategories.necesidades);
+    const deseosSpent = calculateBucketSpent(bucketCategories.deseos);
+    const ahorroSpent = calculateBucketSpent(bucketCategories.ahorro);
 
     return [
       {
-        id: 'operativo',
-        name: 'Balde Operativo',
-        description: 'Gastos fijos: alquiler, servicios, comida, transporte',
+        id: 'necesidades',
+        name: 'Necesidades',
+        description: 'Gastos fijos esenciales',
         icon: Wallet,
         color: '#3b82f6',
-        percentage: percentages.operativo,
-        targetAmount: (totalIncome * percentages.operativo) / 100,
-        spent: operativoSpent,
-        categories: BUCKET_CATEGORIES.operativo,
+        percentage: percentages.necesidades,
+        targetAmount: (totalIncome * percentages.necesidades) / 100,
+        spent: necesidadesSpent,
+        categories: bucketCategories.necesidades,
       },
       {
-        id: 'crecimiento',
-        name: 'Balde de Crecimiento',
-        description: 'Inversion: educacion, software, hardware',
+        id: 'deseos',
+        name: 'Deseos',
+        description: 'Entretenimiento, suscripciones, salidas',
         icon: TrendingUp,
         color: '#8b5cf6',
-        percentage: percentages.crecimiento,
-        targetAmount: (totalIncome * percentages.crecimiento) / 100,
-        spent: crecimientoSpent,
-        categories: crecimientoCategories,
+        percentage: percentages.deseos,
+        targetAmount: (totalIncome * percentages.deseos) / 100,
+        spent: deseosSpent,
+        categories: bucketCategories.deseos,
       },
       {
         id: 'ahorro',
-        name: 'Balde de Emergencia',
-        description: 'Fondo de reserva: ahorro e inversion a largo plazo',
+        name: 'Ahorro',
+        description: 'Fondo de emergencia e inversion',
         icon: PiggyBank,
         color: '#22c55e',
         percentage: percentages.ahorro,
         targetAmount: (totalIncome * percentages.ahorro) / 100,
         spent: ahorroSpent,
-        categories: BUCKET_CATEGORIES.ahorro,
+        categories: bucketCategories.ahorro,
       },
     ];
-  }, [totalIncome, transactions, period, percentages, growthCategories]);
+  }, [totalIncome, transactions, period, percentages, bucketCategories]);
 
-  // Calcular progreso y validar que los porcentajes sumen 100%
-  const totalPercentage = percentages.operativo + percentages.crecimiento + percentages.ahorro;
+  const totalPercentage = percentages.necesidades + percentages.deseos + percentages.ahorro;
   const isValidPercentage = totalPercentage === 100;
 
-  // Handler para actualizar porcentajes
-  const handlePercentageChange = (bucket: keyof BucketPercentages, value: number) => {
-    setPercentages(prev => ({
-      ...prev,
-      [bucket]: Math.max(0, Math.min(100, value)),
-    }));
-  };
-
   // Renderizar barra de progreso
-  const renderProgressBar = (spent: number, target: number) => {
-    const percentage = target > 0 ? (spent / target) * 100 : 0;
-    const isOverBudget = percentage > 100;
-    const isNearLimit = percentage >= 80 && percentage <= 100;
-
-    return (
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-foreground-muted">
-            ${spent.toFixed(2)} gastado
-          </span>
-          <span className={cn(
-            "font-medium",
-            isOverBudget ? "text-red-500" : isNearLimit ? "text-yellow-500" : "text-foreground"
-          )}>
-            ${target.toFixed(2)} objetivo
-          </span>
-        </div>
-
-        <div className="h-3 bg-background rounded-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-300",
-              isOverBudget
-                ? "bg-red-500"
-                : isNearLimit
-                  ? "bg-yellow-500"
-                  : "bg-current"
-            )}
-            style={{
-              width: `${Math.min(percentage, 100)}%`,
-              backgroundColor: isOverBudget ? '#ef4444' : isNearLimit ? '#eab308' : undefined
-            }}
-          />
-        </div>
-
-        <p className={cn(
-          "text-xs text-right",
-          isOverBudget ? "text-red-500 font-medium" : "text-foreground-muted"
-        )}>
-          {percentage.toFixed(1)}% utilizado
-          {isOverBudget && (
-            <span className="flex items-center gap-1 mt-1">
-              <AlertTriangle className="w-3 h-3" />
-              Exceso de presupuesto
-            </span>
-          )}
-        </p>
-      </div>
-    );
-  };
 
   // Si no hay ingresos, mostrar mensaje
   if (realIncome === 0 && baseIncome === 0) {
@@ -238,12 +220,10 @@ export function BudgetBuckets() {
             </span>
           </div>
         </div>
-
+        
         <div className="card">
           <p className="text-foreground-muted text-center py-4">
-            No hay ingresos registrados en el período actual.
-            <br />
-            Agrega un ingreso o establece un "sueldo imaginario" para comenzar.
+            No hay ingresos registrados. Agrega un ingreso o establece un "sueldo imaginario".
           </p>
         </div>
       </div>
@@ -271,34 +251,31 @@ export function BudgetBuckets() {
         </div>
       </div>
 
-
-
-
       {/* Bucket Cards - KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {bucketData.map((bucket) => {
-          const progress = bucket.targetAmount > 0
-            ? (bucket.spent / bucket.targetAmount) * 100
+          const progress = bucket.targetAmount > 0 
+            ? (bucket.spent / bucket.targetAmount) * 100 
             : 0;
           const isOverBudget = progress > 100;
 
           return (
-            <div
+            <div 
               key={bucket.id}
               className={cn(
                 "card transition-all",
-                isOverBudget
-                  ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20"
+                isOverBudget 
+                  ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20" 
                   : ""
               )}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div
+                <div 
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{ backgroundColor: `${bucket.color}20` }}
                 >
-                  <bucket.icon
-                    className="w-5 h-5"
+                  <bucket.icon 
+                    className="w-5 h-5" 
                     style={{ color: bucket.color }}
                   />
                 </div>
@@ -310,11 +287,10 @@ export function BudgetBuckets() {
                 </div>
               </div>
 
-              {/* Mini Progress Bar */}
               <div className="h-2 bg-background rounded-full overflow-hidden mb-2">
                 <div
                   className="h-full rounded-full transition-all duration-300"
-                  style={{
+                  style={{ 
                     width: `${Math.min(progress, 100)}%`,
                     backgroundColor: isOverBudget ? '#ef4444' : bucket.color
                   }}
@@ -322,9 +298,7 @@ export function BudgetBuckets() {
               </div>
 
               <div className="flex justify-between text-xs">
-                <span className="text-foreground-muted">
-                  ${bucket.spent.toFixed(0)}
-                </span>
+                <span className="text-foreground-muted">${bucket.spent.toFixed(0)}</span>
                 <span className={cn(
                   "font-medium",
                   isOverBudget ? "text-red-500" : "text-foreground"
@@ -337,9 +311,6 @@ export function BudgetBuckets() {
         })}
       </div>
 
-
-
-
       {/* Ajustar Porcentajes */}
       <div className="card mb-4">
         <div className="flex items-center justify-between mb-3">
@@ -349,8 +320,8 @@ export function BudgetBuckets() {
           </label>
           <span className={cn(
             "text-xs px-2 py-1 rounded-full",
-            isValidPercentage
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            isValidPercentage 
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
               : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
           )}>
             Total: {totalPercentage}% {isValidPercentage ? 'OK' : 'Revisar'}
@@ -359,36 +330,101 @@ export function BudgetBuckets() {
 
         {/* Sliders */}
         <div className="space-y-4">
+          {/* Necesidades */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-blue-500 font-medium">Operativo</span>
-              <span>{percentages.operativo}%</span>
+              <span className="text-blue-500 font-medium">Necesidades</span>
+              <span>{percentages.necesidades}%</span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
-              value={percentages.operativo}
-              onChange={(e) => handlePercentageChange('operativo', parseInt(e.target.value))}
-              className="w-full accent-blue-500"
+              value={percentages.necesidades}
+              onChange={(e) => handlePercentageChange('necesidades', parseInt(e.target.value))}
+              className="w-full"
+              style={{ accentColor: '#3b82f6' }}
             />
+            {/* Categorías de Necesidades */}
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-foreground-muted">Categorias:</p>
+                <button
+                  onClick={() => setEditingBucket('necesidades')}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Editar
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {bucketCategories.necesidades.length === 0 ? (
+                  <span className="text-xs text-foreground-muted">Sin categorias</span>
+                ) : (
+                  bucketCategories.necesidades.map((catId) => {
+                    const cat = userCategories.find(c => c.id === catId);
+                    return (
+                      <span key={catId} className="text-xs px-2 py-1 bg-background rounded-full flex items-center gap-1">
+                        {cat?.nombre || catId}
+                        <button onClick={() => removeCategoryFromBucket('necesidades', catId)} className="hover:text-red-500">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
+          {/* Deseos */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-violet-500 font-medium">Crecimiento</span>
-              <span>{percentages.crecimiento}%</span>
+              <span className="text-violet-500 font-medium">Deseos</span>
+              <span>{percentages.deseos}%</span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
-              value={percentages.crecimiento}
-              onChange={(e) => handlePercentageChange('crecimiento', parseInt(e.target.value))}
-              className="w-full accent-violet-500"
+              value={percentages.deseos}
+              onChange={(e) => handlePercentageChange('deseos', parseInt(e.target.value))}
+              className="w-full"
+              style={{ accentColor: '#8b5cf6' }}
             />
+            {/* Categorías de Deseos */}
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-foreground-muted">Categorias:</p>
+                <button
+                  onClick={() => setEditingBucket('deseos')}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Editar
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {bucketCategories.deseos.length === 0 ? (
+                  <span className="text-xs text-foreground-muted">Sin categorias</span>
+                ) : (
+                  bucketCategories.deseos.map((catId) => {
+                    const cat = userCategories.find(c => c.id === catId);
+                    return (
+                      <span key={catId} className="text-xs px-2 py-1 bg-background rounded-full flex items-center gap-1">
+                        {cat?.nombre || catId}
+                        <button onClick={() => removeCategoryFromBucket('deseos', catId)} className="hover:text-red-500">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
+          {/* Ahorro */}
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-green-500 font-medium">Ahorro</span>
@@ -400,18 +436,123 @@ export function BudgetBuckets() {
               max="100"
               value={percentages.ahorro}
               onChange={(e) => handlePercentageChange('ahorro', parseInt(e.target.value))}
-              className="w-full accent-green-500"
+              className="w-full"
+              style={{ accentColor: '#22c55e' }}
             />
+            {/* Categorías de Ahorro */}
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-foreground-muted">Categorias:</p>
+                <button
+                  onClick={() => setEditingBucket('ahorro')}
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  Editar
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {bucketCategories.ahorro.length === 0 ? (
+                  <span className="text-xs text-foreground-muted">Sin categorias</span>
+                ) : (
+                  bucketCategories.ahorro.map((catId) => {
+                    const cat = userCategories.find(c => c.id === catId);
+                    return (
+                      <span key={catId} className="text-xs px-2 py-1 bg-background rounded-full flex items-center gap-1">
+                        {cat?.nombre || catId}
+                        <button onClick={() => removeCategoryFromBucket('ahorro', catId)} className="hover:text-red-500">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Distribucion visual */}
         <div className="flex h-2 mt-4 rounded-full overflow-hidden">
-          <div className="bg-blue-500" style={{ width: `${percentages.operativo}%` }} />
-          <div className="bg-violet-500" style={{ width: `${percentages.crecimiento}%` }} />
+          <div className="bg-blue-500" style={{ width: `${percentages.necesidades}%` }} />
+          <div className="bg-violet-500" style={{ width: `${percentages.deseos}%` }} />
           <div className="bg-green-500" style={{ width: `${percentages.ahorro}%` }} />
         </div>
       </div>
+
+      
+
+      {/* Modal para editar categorías */}
+      {editingBucket && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingBucket(null)} />
+          
+          <div className="relative w-full lg:max-w-md bg-card rounded-t-3xl lg:rounded-2xl p-6 animate-slide-up max-h-[80vh] overflow-y-auto">
+            <button onClick={() => setEditingBucket(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-background">
+              <X className="w-5 h-5 text-foreground-muted" />
+            </button>
+
+            <h2 className="text-xl font-bold mb-4">
+              Editar Categorias - {bucketData.find(b => b.id === editingBucket)?.name}
+            </h2>
+
+            <p className="text-xs text-foreground-muted mb-4">
+              Selecciona las categorias para este grupo. Una categoria solo puede estar en un grupo.
+            </p>
+
+            <div className="space-y-2">
+              {userCategories.map((cat) => {
+                const isInThisBucket = bucketCategories[editingBucket].includes(cat.id);
+                const isInOtherBucket = assignedCategories.includes(cat.id) && !isInThisBucket;
+
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      if (isInThisBucket) {
+                        removeCategoryFromBucket(editingBucket, cat.id);
+                      } else {
+                        addCategoryToBucket(editingBucket, cat.id);
+                      }
+                    }}
+                    disabled={isInOtherBucket}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-xl border transition-all",
+                      isInThisBucket 
+                        ? "border-primary bg-primary/10" 
+                        : isInOtherBucket
+                          ? "border-border opacity-50 cursor-not-allowed"
+                          : "border-border hover:bg-background"
+                    )}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${cat.color}20` }}
+                    >
+                      <span style={{ color: cat.color }} className="text-xs font-bold">{cat.nombre[0]}</span>
+                    </div>
+                    <span className="flex-1 text-left font-medium">{cat.nombre}</span>
+                    {isInThisBucket && <Check className="w-5 h-5 text-primary" />}
+                    {isInOtherBucket && <span className="text-xs text-foreground-muted">En otro grupo</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setEditingBucket(null)}
+              className="w-full btn-primary py-3 mt-4"
+            >
+              Listo
+            </button>
+          </div>
+
+          <style>{`
+            @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+            .animate-slide-up { animation: slide-up 0.3s ease-out; }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
