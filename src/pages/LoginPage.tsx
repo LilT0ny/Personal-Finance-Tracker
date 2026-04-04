@@ -100,7 +100,7 @@ export function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: undefined // No redirect
+          emailRedirectTo: undefined
         }
       });
       
@@ -109,6 +109,9 @@ export function LoginPage() {
         setSubmitting(false);
         return;
       }
+      
+      // Guardar email para usar después
+      localStorage.setItem('signupEmail', email.toLowerCase().trim());
       
       // Ir directamente a completar perfil
       setStep(4);
@@ -131,44 +134,24 @@ export function LoginPage() {
     setError(null);
     
     try {
-      // Obtener el usuario de auth
-      const { data: { user: authUser }, error: getUserError } = await supabase.auth.getUser();
+      // Obtener el email guardado o el actual
+      const savedEmail = localStorage.getItem('signupEmail') || email.toLowerCase().trim();
       
-      if (getUserError || !authUser) {
-        // Si no hay sesión activa, buscar por email
-        const { data: { users } } = await supabase.auth.admin.listUsers();
-        const foundUser = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-        
-        if (!foundUser) {
-          setError('Error: tu cuenta no fue creada. Intentá de nuevo.');
-          setSubmitting(false);
-          return;
-        }
-        
-        // Crear perfil con ese auth_user_id
-        const { error: insertError } = await supabase
-          .from('usuarios')
-          .insert({
-            auth_user_id: foundUser.id,
-            email: email.toLowerCase().trim(),
-            cedula: cedula.trim(),
-            nombre: nombre.trim(),
-            apellido_paterno: apellidoPaterno.trim(),
-            apellido_materno: apellidoMaterno.trim() || null,
-            telefono: telefono.trim() || null,
-            fecha_nacimiento: fechaNacimiento,
-          });
-        
-        if (insertError) {
-          setError('Error al crear perfil: ' + insertError.message);
-          setSubmitting(false);
-          return;
-        }
-        
-        // Limpiar y volver al login
-        resetForm();
-        setStep(2);
-        alert('¡Cuenta creada! Iniciá sesión.');
+      // Buscar el usuario en Auth por email
+      const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+      
+      if (usersError) {
+        console.error('Error listando usuarios:', usersError);
+        setError('Error al verificar cuenta');
+        setSubmitting(false);
+        return;
+      }
+      
+      const authUser = users?.find(u => u.email?.toLowerCase() === savedEmail.toLowerCase());
+      
+      if (!authUser) {
+        setError('Tu cuenta no fue creada. Intentá de nuevo.');
+        setSubmitting(false);
         return;
       }
       
@@ -180,8 +163,9 @@ export function LoginPage() {
         .single();
       
       if (existing) {
+        localStorage.removeItem('signupEmail');
         alert('Tu perfil ya existe. Iniciá sesión.');
-        setNeedsProfile(false);
+        setStep(2);
         setSubmitting(false);
         return;
       }
@@ -191,7 +175,7 @@ export function LoginPage() {
         .from('usuarios')
         .insert({
           auth_user_id: authUser.id,
-          email: email.toLowerCase().trim(),
+          email: savedEmail,
           cedula: cedula.trim(),
           nombre: nombre.trim(),
           apellido_paterno: apellidoPaterno.trim(),
@@ -206,8 +190,8 @@ export function LoginPage() {
         return;
       }
       
-      // Cerrar sesión para que inicie sesión
-      await supabase.auth.signOut();
+      // Limpiar
+      localStorage.removeItem('signupEmail');
       
       // Limpiar y volver al login
       resetForm();
