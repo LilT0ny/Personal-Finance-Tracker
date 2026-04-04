@@ -448,6 +448,20 @@ export function BalanceCard(props: BalanceCardProps) {
                           </div>
                         )}
 
+                        {/* Labels below bar */}
+                        <div className="absolute -bottom-16 left-0 right-0 flex flex-col items-center gap-0.5">
+                          <span style={{ color: item.color }}><IconComponent className="w-3 h-3" /></span>
+                          <span className="text-[9px] text-foreground-muted text-center truncate w-full leading-tight">
+                            {item.name}
+                          </span>
+                          <span className="flex items-center justify-center gap-0.5 text-[9px] font-bold text-center" style={{ color: item.color }}>
+                            ${item.spent >= 1000 ? `${(item.spent / 1000).toFixed(1)}k` : item.spent.toFixed(0)}
+                            {item.spent > item.limit && item.limit > 0 && (
+                              <span className="text-yellow-400">⚠</span>
+                            )}
+                          </span>
+                        </div>
+
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-950 border border-gray-700/80 rounded-xl px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 whitespace-nowrap pointer-events-none shadow-xl shadow-black/50 scale-95 group-hover:scale-100">
                           <div className="flex items-center gap-1.5 mb-1.5">
