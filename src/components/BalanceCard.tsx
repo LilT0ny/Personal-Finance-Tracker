@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle, AlertTriangle } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
@@ -470,31 +470,6 @@ export function BalanceCard(props: BalanceCardProps) {
                   })}
                   </div>
                 </div>
-              </div>
-
-              {/* Row 2: X-axis labels — offset by Y-axis width (w-10 + gap = ~44px) */}
-              <div className="flex justify-around gap-1 mt-2 border-t border-border/30 pt-2" style={{ paddingLeft: '44px' }}>
-                {chartData.map((item) => {
-                  const IconComponent = ICON_MAP[item.icon] || Circle;
-                  const isOver = item.spent > item.limit && item.limit > 0;
-                  return (
-                    <div key={item.name} className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${item.color}25`, color: item.color }}
-                      >
-                        <IconComponent className="w-3 h-3" />
-                      </div>
-                      <span className="text-[9px] text-foreground-muted text-center truncate w-full leading-tight">
-                        {item.name}
-                      </span>
-                      <span className="flex items-center justify-center gap-0.5 text-[9px] font-bold text-center" style={{ color: isOver ? '#ef4444' : item.color }}>
-                        ${item.spent >= 1000 ? `${(item.spent / 1000).toFixed(1)}k` : item.spent.toFixed(0)}
-                        {isOver && <AlertTriangle className="w-2.5 h-2.5 text-yellow-400 shrink-0" />}
-                      </span>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
