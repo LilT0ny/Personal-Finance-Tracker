@@ -16,6 +16,7 @@ import { ConfigPage } from './pages/ConfigPage';
 import { BalanceCard } from './components/BalanceCard';
 import { TransactionList } from './components/TransactionList';
 import { BudgetBuckets } from './components/BudgetBuckets';
+import { BudgetKPIs } from './components/BudgetKPIs';
 
 type SidebarSection = 'inicio' | 'presupuesto' | 'ingresos' | 'egresos' | 'config';
 
@@ -109,19 +110,28 @@ function Dashboard() {
       default:
         return (
           <>
+
             {/* Balance Card (Monthly by default) */}
-            <BalanceCard 
-              income={income} 
-              expenses={expenses} 
-              period={period}
-              onPeriodChange={setPeriod}
-              onCategoryChange={setCategoryFilter}
-              categoryFilter={categoryFilter}
-              allTransactions={allTransactions}
-              budgets={budgets}
-              customDateRange={customDateRange}
-              onCustomDateRangeChange={setCustomDateRange}
-            />
+            <div className="mb-4">
+              <BalanceCard 
+                income={income} 
+                expenses={expenses} 
+                period={period}
+                onPeriodChange={setPeriod}
+                onCategoryChange={setCategoryFilter}
+                categoryFilter={categoryFilter}
+                allTransactions={allTransactions}
+                budgets={budgets}
+                customDateRange={customDateRange}
+                onCustomDateRangeChange={setCustomDateRange}
+              />
+            </div>
+
+                        {/* Budget KPIs - Quick View */}
+            <div className="mb-4">
+              <BudgetKPIs />
+            </div>
+            
             
             {/* Transaction List */}
             <TransactionList transactions={transactions} />

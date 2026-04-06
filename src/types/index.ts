@@ -46,29 +46,6 @@ export interface Categoria {
   fecha_creacion: string;
 }
 
-// Configuración del sistema por usuario
-export interface ParametrosSistema {
-  id: string;
-  usuario_id: string;
-  tema: 'light' | 'dark';
-  color_primario: string;
-  updated_at: string;
-}
-
-// Vista de resumen de gastos por categoría (para gráfica)
-export interface ResumenGastosCategoria {
-  categoria_id: string;
-  usuario_id: string;
-  categoria_nombre: string;
-  icono: string;
-  color: string;
-  limite_gastos: number;
-  total_gastado: number;
-  total_ingresado: number;
-  porcentaje_uso: number | null;
-  disponible: number | null;
-}
-
 // Tipos para categorías (configuración local)
 export interface CategoryConfig {
   id: string;
@@ -90,19 +67,3 @@ export const PREDEFINED_CATEGORIES: CategoryConfig[] = [
   { id: 'savings', label: 'Ahorros', icon: 'PiggyBank', color: '#22c55e', is_default: true },
   { id: 'other', label: 'Otros', icon: 'MoreHorizontal', color: '#6b7280', is_default: true },
 ];
-
-export const DEFAULT_CATEGORIES: CategoryConfig[] = [];
-export const CATEGORIES: CategoryConfig[] = [...DEFAULT_CATEGORIES];
-
-export const getCategoryConfig = (categoryId: string): CategoryConfig => {
-  const found = [...PREDEFINED_CATEGORIES, ...CATEGORIES].find(c => c.id === categoryId);
-  if (found) return found;
-  return { id: categoryId, label: categoryId, icon: 'Circle', color: '#6b7280' };
-};
-
-// Helper para obtener el nombre de categoría desde el ID
-// (Se usa cuando tenemos transacciones con categoria_id pero necesitamos el nombre)
-export const getCategoryNameFromConfig = (categoryId: string): string => {
-  const config = getCategoryConfig(categoryId);
-  return config.label;
-};

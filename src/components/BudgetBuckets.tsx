@@ -8,13 +8,13 @@ import { cn } from '../lib/utils';
 // CONFIGURACIÓN DE BALDES - Regla 50/30/20
 // =====================================================
 
-export interface BucketPercentages {
+interface BucketPercentages {
   necesidades: number;
   deseos: number;
   ahorro: number;
 }
 
-export interface BucketCategories {
+interface BucketCategories {
   necesidades: string[];
   deseos: string[];
   ahorro: string[];
@@ -249,66 +249,6 @@ export function BudgetBuckets() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bucket Cards - KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {bucketData.map((bucket) => {
-          const progress = bucket.targetAmount > 0 
-            ? (bucket.spent / bucket.targetAmount) * 100 
-            : 0;
-          const isOverBudget = progress > 100;
-
-          return (
-            <div 
-              key={bucket.id}
-              className={cn(
-                "card transition-all",
-                isOverBudget 
-                  ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20" 
-                  : ""
-              )}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${bucket.color}20` }}
-                >
-                  <bucket.icon 
-                    className="w-5 h-5" 
-                    style={{ color: bucket.color }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{bucket.name}</h3>
-                  <p className="text-xs text-foreground-muted truncate">
-                    {bucket.percentage}% (${bucket.targetAmount.toFixed(0)})
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-2 bg-background rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${Math.min(progress, 100)}%`,
-                    backgroundColor: isOverBudget ? '#ef4444' : bucket.color
-                  }}
-                />
-              </div>
-
-              <div className="flex justify-between text-xs">
-                <span className="text-foreground-muted">${bucket.spent.toFixed(0)}</span>
-                <span className={cn(
-                  "font-medium",
-                  isOverBudget ? "text-red-500" : "text-foreground"
-                )}>
-                  {progress.toFixed(0)}%
-                </span>
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       {/* Ajustar Porcentajes */}
