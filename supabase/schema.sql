@@ -1,7 +1,7 @@
 -- =============================================================================
 -- PERSONAL FINANCE TRACKER — Supabase Schema
 -- Engine : PostgreSQL (Supabase)
--- Version: 2.0
+-- Version: 3.0
 -- =============================================================================
 
 -- Nota: Supabase ya provee la tabla auth.users. Creamos una tabla pública
@@ -117,6 +117,50 @@ COMMENT ON COLUMN public.parametros_sistema.usuario_id  IS 'Relación 1-a-1 con 
 
 
 -- =============================================================================
+-- TABLA: presupuestos  (Regla 50/30/20)
+-- Almacena los 3 baldes de presupuesto por usuario con su porcentaje.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.presupuestos (
+    id            UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+    usuario_id    UUID          NOT NULL REFERENCES public.usuarios(id) ON DELETE CASCADE,
+    nombre        VARCHAR(50)   NOT NULL,                                -- 'necesidades', 'deseos', 'ahorro'
+    porcentaje    DECIMAL(5,2)  NOT NULL DEFAULT 0 CHECK (porcentaje >= 0 AND porcentaje <= 100),
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+
+    -- Un usuario no puede tener dos baldes con el mismo nombre
+    CONSTRAINT uq_presupuesto_usuario_nombre UNIQUE (usuario_id, nombre)
+);
+
+COMMENT ON TABLE  public.presupuestos              IS 'Baldes de presupuesto por usuario (regla 50/30/20). Cada usuario tiene 3 filas.';
+COMMENT ON COLUMN public.presupuestos.nombre       IS 'Identificador del balde: necesidades, deseos, ahorro.';
+COMMENT ON COLUMN public.presupuestos.porcentaje   IS 'Porcentaje del ingreso asignado a este balde (0-100).';
+
+
+-- =============================================================================
+-- TABLA: presupuesto_categorias  (Relación N:N entre presupuestos y categorías)
+-- Cada balde tiene asociadas N categorías del usuario.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.presupuesto_categorias (
+    id               UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    presupuesto_id   UUID        NOT NULL REFERENCES public.presupuestos(id) ON DELETE CASCADE,
+    categoria_id     UUID        NOT NULL REFERENCES public.categorias(id) ON DELETE CASCADE,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Una categoría no puede estar dos veces en el mismo balde
+    CONSTRAINT uq_presupuesto_categoria UNIQUE (presupuesto_id, categoria_id)
+);
+
+COMMENT ON TABLE  public.presupuesto_categorias IS 'Relación muchos-a-muchos entre presupuestos (baldes) y categorías del usuario.';
+
+
+-- Índices para consultas frecuentes
+CREATE INDEX IF NOT EXISTS idx_presupuestos_usuario_id ON public.presupuestos(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_presupuesto_cat_presupuesto ON public.presupuesto_categorias(presupuesto_id);
+CREATE INDEX IF NOT EXISTS idx_presupuesto_cat_categoria ON public.presupuesto_categorias(categoria_id);
+
+
+-- =============================================================================
 -- TRIGGERS
 -- =============================================================================
 
@@ -137,6 +181,10 @@ CREATE OR REPLACE TRIGGER trg_parametros_updated_at
     BEFORE UPDATE ON public.parametros_sistema
     FOR EACH ROW EXECUTE FUNCTION public.fn_set_updated_at();
 
+CREATE OR REPLACE TRIGGER trg_presupuestos_updated_at
+    BEFORE UPDATE ON public.presupuestos
+    FOR EACH ROW EXECUTE FUNCTION public.fn_set_updated_at();
+
 
 -- Trigger: al crear un usuario en public.usuarios, genera sus parámetros
 -- por defecto automáticamente.
@@ -153,6 +201,7 @@ $$;
 CREATE OR REPLACE TRIGGER trg_parametros_default_on_usuario
     AFTER INSERT ON public.usuarios
     FOR EACH ROW EXECUTE FUNCTION public.fn_crear_parametros_default();
+
 
 -- Trigger: crear categorías por defecto cuando se crea un usuario
 CREATE OR REPLACE FUNCTION public.fn_crear_categorias_default()
@@ -179,9 +228,31 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE TRIGGER trg_categorias_default_on_usuario
+DROP TRIGGER IF EXISTS trg_categorias_default_on_usuario ON public.usuarios;
+CREATE TRIGGER trg_categorias_default_on_usuario
     AFTER INSERT ON public.usuarios
     FOR EACH ROW EXECUTE FUNCTION public.fn_crear_categorias_default();
+
+
+-- Trigger: crear presupuestos default (50/30/20) cuando se crea un usuario
+CREATE OR REPLACE FUNCTION public.fn_crear_presupuestos_default()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO public.presupuestos (usuario_id, nombre, porcentaje)
+    VALUES 
+        (NEW.id, 'necesidades', 50),
+        (NEW.id, 'deseos', 30),
+        (NEW.id, 'ahorro', 20)
+    ON CONFLICT (usuario_id, nombre) DO NOTHING;
+    
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_presupuestos_default_on_usuario ON public.usuarios;
+CREATE TRIGGER trg_presupuestos_default_on_usuario
+    AFTER INSERT ON public.usuarios
+    FOR EACH ROW EXECUTE FUNCTION public.fn_crear_presupuestos_default();
 
 
 -- =============================================================================
@@ -260,132 +331,102 @@ COMMENT ON VIEW public.v_usuarios_perfil IS
 
 -- =============================================================================
 -- ROW LEVEL SECURITY (RLS) — Supabase
--- Cada usuario solo puede leer/escribir sus propios datos.
+-- No usamos Supabase Auth → políticas abiertas, el frontend controla acceso.
 -- =============================================================================
 
 ALTER TABLE public.usuarios           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categorias         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transacciones      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.parametros_sistema ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.presupuestos       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.presupuesto_categorias ENABLE ROW LEVEL SECURITY;
 
 -- -----------------------------------------------------------------------
--- Políticas: usuarios
+-- Políticas: usuarios (abiertas - el frontend controla acceso)
 -- -----------------------------------------------------------------------
-CREATE POLICY "usuarios: solo el propio usuario puede ver su fila"
-    ON public.usuarios FOR SELECT
-    USING (auth.uid() = auth_user_id);
+CREATE POLICY "usuarios: SELECT anyone"
+    ON public.usuarios FOR SELECT USING (true);
 
-CREATE POLICY "usuarios: solo el propio usuario puede insertar su fila"
-    ON public.usuarios FOR INSERT
-    WITH CHECK (auth.uid() = auth_user_id);
+CREATE POLICY "usuarios: INSERT anyone"
+    ON public.usuarios FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "usuarios: solo el propio usuario puede actualizar su fila"
-    ON public.usuarios FOR UPDATE
-    USING (auth.uid() = auth_user_id)
-    WITH CHECK (auth.uid() = auth_user_id);
+CREATE POLICY "usuarios: UPDATE anyone"
+    ON public.usuarios FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "usuarios: solo el propio usuario puede eliminar su fila"
-    ON public.usuarios FOR DELETE
-    USING (auth.uid() = auth_user_id);
+CREATE POLICY "usuarios: DELETE anyone"
+    ON public.usuarios FOR DELETE USING (true);
 
 -- -----------------------------------------------------------------------
--- Políticas: categorias
+-- Políticas: categorias (abiertas)
 -- -----------------------------------------------------------------------
-CREATE POLICY "categorias: SELECT solo las propias"
-    ON public.categorias FOR SELECT
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "categorias: SELECT anyone"
+    ON public.categorias FOR SELECT USING (true);
 
-CREATE POLICY "categorias: INSERT solo las propias"
-    ON public.categorias FOR INSERT
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "categorias: INSERT anyone"
+    ON public.categorias FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "categorias: UPDATE solo las propias"
-    ON public.categorias FOR UPDATE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()))
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "categorias: UPDATE anyone"
+    ON public.categorias FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "categorias: DELETE solo las propias"
-    ON public.categorias FOR DELETE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "categorias: DELETE anyone"
+    ON public.categorias FOR DELETE USING (true);
 
 -- -----------------------------------------------------------------------
--- Políticas: transacciones
+-- Políticas: transacciones (abiertas)
 -- -----------------------------------------------------------------------
-CREATE POLICY "transacciones: SELECT solo las propias"
-    ON public.transacciones FOR SELECT
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "transacciones: SELECT anyone"
+    ON public.transacciones FOR SELECT USING (true);
 
-CREATE POLICY "transacciones: INSERT solo las propias"
-    ON public.transacciones FOR INSERT
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "transacciones: INSERT anyone"
+    ON public.transacciones FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "transacciones: UPDATE solo las propias"
-    ON public.transacciones FOR UPDATE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()))
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "transacciones: UPDATE anyone"
+    ON public.transacciones FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "transacciones: DELETE solo las propias"
-    ON public.transacciones FOR DELETE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+CREATE POLICY "transacciones: DELETE anyone"
+    ON public.transacciones FOR DELETE USING (true);
 
 -- -----------------------------------------------------------------------
--- Políticas: parametros_sistema
--- NOTA: No usamos Supabase Auth, así que permitimos acceso total
--- El frontend controla que cada usuario acceda solo a sus datos
+-- Políticas: parametros_sistema (abiertas)
 -- -----------------------------------------------------------------------
 CREATE POLICY "parametros: SELECT anyone"
-    ON public.parametros_sistema FOR SELECT
-    USING (true);
+    ON public.parametros_sistema FOR SELECT USING (true);
 
 CREATE POLICY "parametros: INSERT anyone"
-    ON public.parametros_sistema FOR INSERT
-    WITH CHECK (true);
+    ON public.parametros_sistema FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "parametros: UPDATE anyone"
-    ON public.parametros_sistema FOR UPDATE
-    USING (true)
-    WITH CHECK (true);
+    ON public.parametros_sistema FOR UPDATE USING (true) WITH CHECK (true);
 
 CREATE POLICY "parametros: DELETE anyone"
-    ON public.parametros_sistema FOR DELETE
-    USING (true);
+    ON public.parametros_sistema FOR DELETE USING (true);
 
+-- -----------------------------------------------------------------------
+-- Políticas: presupuestos (abiertas)
+-- -----------------------------------------------------------------------
+CREATE POLICY "presupuestos: SELECT anyone"
+    ON public.presupuestos FOR SELECT USING (true);
 
--- =============================================================================
--- DATOS SEMILLA — Categorías por defecto (las inserta el frontend por usuario)
--- Esto es solo un ejemplo de cómo quedan los datos; no se ejecuta en seed.
--- =============================================================================
-/*
-  Para crear categorías por defecto al registrar un usuario puedes usar
-  una función RPC de Supabase o un trigger AFTER INSERT ON public.usuarios.
+CREATE POLICY "presupuestos: INSERT anyone"
+    ON public.presupuestos FOR INSERT WITH CHECK (true);
 
-  Ejemplo de categorías default:
-  INSERT INTO public.categorias (usuario_id, nombre, icono, color, limite_gastos) VALUES
-    (<uid>, 'Alimentación',  'utensils',        '#f59e0b', 500.00),
-    (<uid>, 'Transporte',    'car',             '#3b82f6', 200.00),
-    (<uid>, 'Entretenimiento','music',          '#8b5cf6', 150.00),
-    (<uid>, 'Salud',         'heart-pulse',     '#ef4444', 300.00),
-    (<uid>, 'Educación',     'graduation-cap',  '#10b981', 400.00),
-    (<uid>, 'Hogar',         'home',            '#6366f1', 600.00);
-*/
+CREATE POLICY "presupuestos: UPDATE anyone"
+    ON public.presupuestos FOR UPDATE USING (true) WITH CHECK (true);
 
+CREATE POLICY "presupuestos: DELETE anyone"
+    ON public.presupuestos FOR DELETE USING (true);
 
--- =============================================================================
--- QUERY DE EJEMPLO — Uso directo en el frontend (Supabase JS SDK)
--- =============================================================================
-/*
-  Para obtener el resumen de gastos por categoría del usuario autenticado:
+-- -----------------------------------------------------------------------
+-- Políticas: presupuesto_categorias (abiertas)
+-- -----------------------------------------------------------------------
+CREATE POLICY "presupuesto_categorias: SELECT anyone"
+    ON public.presupuesto_categorias FOR SELECT USING (true);
 
-  const { data, error } = await supabase
-    .from('v_resumen_gastos_por_categoria')
-    .select('*')
-    .order('total_gastado', { ascending: false });
+CREATE POLICY "presupuesto_categorias: INSERT anyone"
+    ON public.presupuesto_categorias FOR INSERT WITH CHECK (true);
 
-  Los datos retornados alimentan directamente la gráfica de barras:
-    · nombre          → label del eje Y
-    · total_gastado   → valor de la barra
-    · limite_gastos   → posición de la línea punteada
-    · porcentaje_uso  → ancho de la barra (%)
-    · color           → color del fill de la barra
-    · disponible      → tooltip de cuánto queda
-*/
+CREATE POLICY "presupuesto_categorias: UPDATE anyone"
+    ON public.presupuesto_categorias FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "presupuesto_categorias: DELETE anyone"
+    ON public.presupuesto_categorias FOR DELETE USING (true);
