@@ -114,7 +114,9 @@ export function TransactionPageList({
   };
 
   const handleSave = () => {
-    const parsedAmount = parseFloat(amount);
+    // Normalizar: convertir coma a punto
+    const normalizedAmount = amount.replace(',', '.');
+    const parsedAmount = parseFloat(normalizedAmount);
     if (!amount || parsedAmount <= 0 || !transactionCategory) return;
     
     onAddTransaction(parsedAmount, transactionCategory, type, note || undefined);
@@ -125,8 +127,10 @@ export function TransactionPageList({
   };
 
   const handleAmountChange = (value: string) => {
+    // Permitir punto o coma como separador decimal
+    const normalized = value.replace(',', '.');
     const regex = /^\d*\.?\d{0,2}$/;
-    if (regex.test(value) || value === '') {
+    if (regex.test(normalized) || value === '') {
       setAmount(value);
     }
   };

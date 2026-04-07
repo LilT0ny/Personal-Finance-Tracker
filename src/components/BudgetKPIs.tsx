@@ -1,41 +1,123 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Wallet, TrendingUp, PiggyBank } from 'lucide-react';
 import { useTransactions } from '../hooks/useTransactions';
-import { useCategories } from '../hooks/useCategories';
+import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
 // KPIs de Presupuesto para mostrar en Inicio
 export function BudgetKPIs() {
   const { transactions, income: realIncome, period } = useTransactions();
-  const { categories: _userCategories } = useCategories();
+  const usuarioId = localStorage.getItem('usuario_id');
 
-  // Obtener categorias de localStorage
-  const bucketCategories = useMemo(() => {
-    const saved = localStorage.getItem('budget_bucketCategories');
-    return saved ? JSON.parse(saved) : {
-      necesidades: ['food', 'transport', 'utilities', 'health', 'other'],
-      deseos: ['entertainment', 'shopping'],
-      ahorro: ['savings']
+  // Estado para los presupuestos desde Supabase
+  const [presupuestos, setPresupuestos] = useState<{id: string; nombre: string; porcentaje: number}[]>([]);
+  const [presupuestoCategorias, setPresupuestoCategorias] = useState<Record<string, string[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  // Cargar presupuestos desde Supabase
+  useEffect(() => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        // Cargar presupuestos del usuario
+        const { data: presupuestosData, error: presupuestosError } = await supabase
+          .from('presupuestos')
+          .select('id, nombre, porcentaje')
+          .eq('usuario_id', usuarioId);
+
+        if (presupuestosError) {
+          console.error('Error fetching presupuestos:', presupuestosError);
+          setLoading(false);
+          return;
+        }
+
+        setPresupuestos(presupuestosData || []);
+
+        // Cargar categorías asignadas a cada presupuesto
+        if (presupuestosData && presupuestosData.length > 0) {
+          const presupuestoIds = presupuestosData.map(p => p.id);
+          
+          const { data: categoriasData, error: categoriasError } = await supabase
+            .from('presupuesto_categorias')
+            .select('presupuesto_id, categoria_id')
+            .in('presupuesto_id', presupuestoIds);
+
+          if (!categoriasError && categoriasData) {
+            // Agrupar por nombre de presupuesto
+            const grouped: Record<string, string[]> = {};
+            
+            categoriasData.forEach(pc => {
+              const presupuesto = presupuestosData.find(p => p.id === pc.presupuesto_id);
+              if (presupuesto) {
+                if (!grouped[presupuesto.nombre]) {
+                  grouped[presupuesto.nombre] = [];
+                }
+                grouped[presupuesto.nombre].push(pc.categoria_id);
+              }
+            });
+            
+            setPresupuestoCategorias(grouped);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading presupuestos:', err);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, []);
 
-  // Obtener porcentajes de localStorage
+    fetchData();
+  }, [usuarioId]);
+
+  // Obtener los porcentajes actuales
   const percentages = useMemo(() => {
-    const saved = localStorage.getItem('budget_percentages');
-    return saved ? JSON.parse(saved) : { necesidades: 50, deseos: 30, ahorro: 20 };
-  }, []);
+    const result = { necesidades: 50, deseos: 30, ahorro: 20 };
+    presupuestos.forEach(p => {
+      if (p.nombre in result) {
+        result[p.nombre as keyof typeof result] = p.porcentaje;
+      }
+    });
+    return result;
+  }, [presupuestos]);
 
-  // Obtener ingreso base de localStorage
-  const baseIncome = useMemo(() => {
-    const saved = localStorage.getItem('budget_baseIncome');
-    return saved ? parseFloat(saved) : 0;
-  }, []);
+  // Obtener las categorías de cada balde
+  const bucketCategories = useMemo(() => {
+    return {
+      necesidades: presupuestoCategorias['necesidades'] || [],
+      deseos: presupuestoCategorias['deseos'] || [],
+      ahorro: presupuestoCategorias['ahorro'] || []
+    };
+  }, [presupuestoCategorias]);
+
+  // Obtener ingreso base desde parametros_sistema
+  const [baseIncome, setBaseIncome] = useState(0);
+  useEffect(() => {
+    if (!usuarioId) return;
+
+    const fetchBaseIncome = async () => {
+      const { data } = await supabase
+        .from('parametros_sistema')
+        .select('ingreso_base')
+        .eq('usuario_id', usuarioId)
+        .single();
+      
+      if (data?.ingreso_base) {
+        setBaseIncome(parseFloat(data.ingreso_base));
+      }
+    };
+
+    fetchBaseIncome();
+  }, [usuarioId]);
 
   const totalIncome = baseIncome > 0 ? baseIncome : realIncome;
 
   // Calcular gastos por balde
   const bucketData = useMemo(() => {
-    if (totalIncome === 0) {
+    if (totalIncome === 0 || loading) {
       return [];
     }
 
@@ -70,42 +152,26 @@ export function BudgetKPIs() {
         .reduce((sum, t) => sum + t.monto, 0);
     };
 
-    const necesidadesSpent = calculateBucketSpent(bucketCategories.necesidades);
-    const deseosSpent = calculateBucketSpent(bucketCategories.deseos);
-    const ahorroSpent = calculateBucketSpent(bucketCategories.ahorro);
-
-    return [
-      {
-        id: 'necesidades',
-        name: 'Necesidades',
-        icon: Wallet,
-        color: '#3b82f6',
-        percentage: percentages.necesidades,
-        targetAmount: (totalIncome * percentages.necesidades) / 100,
-        spent: necesidadesSpent,
-      },
-      {
-        id: 'deseos',
-        name: 'Deseos',
-        icon: TrendingUp,
-        color: '#8b5cf6',
-        percentage: percentages.deseos,
-        targetAmount: (totalIncome * percentages.deseos) / 100,
-        spent: deseosSpent,
-      },
-      {
-        id: 'ahorro',
-        name: 'Ahorro',
-        icon: PiggyBank,
-        color: '#22c55e',
-        percentage: percentages.ahorro,
-        targetAmount: (totalIncome * percentages.ahorro) / 100,
-        spent: ahorroSpent,
-      },
+    const bucketInfo = [
+      { id: 'necesidades' as const, name: 'Necesidades', icon: Wallet, color: '#3b82f6' },
+      { id: 'deseos' as const, name: 'Deseos', icon: TrendingUp, color: '#8b5cf6' },
+      { id: 'ahorro' as const, name: 'Ahorro', icon: PiggyBank, color: '#22c55e' },
     ];
-  }, [totalIncome, transactions, period, bucketCategories, percentages]);
 
-  if (totalIncome === 0) {
+    return bucketInfo.map(info => {
+      const cats = bucketCategories[info.id] || [];
+      const spent = calculateBucketSpent(cats);
+      
+      return {
+        ...info,
+        percentage: percentages[info.id],
+        targetAmount: (totalIncome * percentages[info.id]) / 100,
+        spent,
+      };
+    });
+  }, [totalIncome, transactions, period, percentages, bucketCategories, loading]);
+
+  if (loading || totalIncome === 0) {
     return null;
   }
 
