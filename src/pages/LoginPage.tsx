@@ -126,6 +126,7 @@ export function LoginPage() {
     try {
       const hashedPassword = await hashPassword(tempPassword);
       
+      // 1. Crear usuario
       const { error: insertError } = await supabase
         .from('usuarios')
         .insert({
@@ -144,6 +145,23 @@ export function LoginPage() {
         setError('Error al crear cuenta: ' + insertError.message);
         setSubmitting(false);
         return;
+      }
+      
+      // 2. Obtener el usuario creado para obtener su ID
+      const { data: usuarioData } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('email', tempEmail.toLowerCase().trim())
+        .single();
+      
+      // 3. Crear parámetros del sistema con color primario por defecto
+      if (usuarioData?.id) {
+        await supabase
+          .from('parametros_sistema')
+          .insert({
+            usuario_id: usuarioData.id,
+            color_primario: '#3b82f6', // default blue
+          });
       }
       
       resetForm();
@@ -198,7 +216,7 @@ export function LoginPage() {
           <div className="card space-y-4">
             <button
               onClick={() => { setStep(2); setError(null); setSuccessMessage(null); }}
-              className="w-full btn-primary py-4 flex items-center justify-center gap-2"
+              className="w-full bg-app-primary text-white py-4 rounded-xl font-medium flex items-center justify-center gap-2"
             >
               <Mail className="w-5 h-5" />
               Iniciar Sesión
@@ -281,7 +299,7 @@ export function LoginPage() {
                 type="submit"
                 disabled={submitting}
                 className={cn(
-                  "w-full btn-primary py-3 flex items-center justify-center gap-2",
+                  "w-full bg-app-primary text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2",
                   submitting && "opacity-50 cursor-not-allowed"
                 )}
               >
@@ -395,7 +413,7 @@ export function LoginPage() {
                 type="submit"
                 disabled={submitting}
                 className={cn(
-                  "w-full btn-primary py-3 flex items-center justify-center gap-2",
+                  "w-full bg-app-primary text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2",
                   submitting && "opacity-50 cursor-not-allowed"
                 )}
               >
@@ -522,7 +540,7 @@ export function LoginPage() {
                   type="submit"
                   disabled={submitting}
                   className={cn(
-                    "flex-1 btn-primary py-3",
+                    "flex-1 bg-app-primary text-white py-3 rounded-xl font-medium",
                     submitting && "opacity-50"
                   )}
                 >

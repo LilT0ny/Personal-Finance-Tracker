@@ -10,6 +10,7 @@
     --foreground-muted: #a0a0a0;
     --border: #2a2a2a;
     --primary: 99 102 241;
+    --primary-rgb: 99, 102, 241;
   }
 
   .light {
@@ -19,6 +20,7 @@
     --foreground-muted: #6b7280;
     --border: #e5e7eb;
     --primary: 79 70 229;
+    --primary-rgb: 79, 70, 229;
   }
 
   * {
@@ -31,7 +33,6 @@
     -webkit-touch-callout: none;
   }
 
-  /* Prevent pull-to-refresh on mobile */
   html {
     overscroll-behavior: none;
   }
@@ -71,6 +72,7 @@
   .light ::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
   }
+
   /* Custom range input styling */
   input[type="range"] {
     @apply h-1.5 bg-border rounded-full appearance-none cursor-pointer transition-all;
@@ -91,33 +93,71 @@
     border: 2px solid white;
     box-shadow: 0 0 0 1px var(--range-color, rgb(var(--primary)));
   }
+
+  /* Override Tailwind's compiled primary colors dynamically */
+  .bg-primary { background-color: rgb(var(--primary)) !important; }
+  .text-primary { color: rgb(var(--primary)) !important; }
+  .border-primary { border-color: rgb(var(--primary)) !important; }
+  .ring-primary { --tw-ring-color: rgb(var(--primary)) !important; }
+  .hover\:bg-primary:hover { background-color: rgb(var(--primary)) !important; }
+  .hover\:text-primary:hover { color: rgb(var(--primary)) !important; }
+  .hover\:border-primary:hover { border-color: rgb(var(--primary)) !important; }
+  .active\:bg-primary:active { background-color: rgb(var(--primary)) !important; }
+  .focus\:ring-primary:focus { --tw-ring-color: rgb(var(--primary)) !important; }
+  .focus\:border-primary:focus { border-color: rgb(var(--primary)) !important; }
+  
+  /* Primary opacity variants - use primary-rgb for rgba() */
+  .bg-primary\/10 { background-color: rgba(var(--primary-rgb), 0.1) !important; }
+  .bg-primary\/20 { background-color: rgba(var(--primary-rgb), 0.2) !important; }
+  .bg-primary\/30 { background-color: rgba(var(--primary-rgb), 0.3) !important; }
+  .bg-primary\/50 { background-color: rgba(var(--primary-rgb), 0.5) !important; }
+  .bg-primary\/70 { background-color: rgba(var(--primary-rgb), 0.7) !important; }
+  .bg-primary\/80 { background-color: rgba(var(--primary-rgb), 0.8) !important; }
+  .bg-primary\/90 { background-color: rgba(var(--primary-rgb), 0.9) !important; }
+  .text-primary\/50 { color: rgba(var(--primary-rgb), 0.5) !important; }
+  .text-primary\/70 { color: rgba(var(--primary-rgb), 0.7) !important; }
+  .text-primary\/90 { color: rgba(var(--primary-rgb), 0.9) !important; }
+  .border-primary\/10 { border-color: rgba(var(--primary-rgb), 0.1) !important; }
+  .border-primary\/30 { border-color: rgba(var(--primary-rgb), 0.3) !important; }
+  .border-primary\/50 { border-color: rgba(var(--primary-rgb), 0.5) !important; }
+  .hover\:border-primary\/50:hover { border-color: rgba(var(--primary-rgb), 0.5) !important; }
 }
 
 @layer components {
   .card {
     @apply bg-card rounded-2xl p-4 border border-border shadow-sm;
   }
-
-  .btn-primary {
-    @apply bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-xl transition-colors;
-  }
-
-  .btn-ghost {
-    @apply hover:bg-card text-foreground-muted hover:text-foreground transition-colors;
-  }
-
+  
+  /* Input field styling - modern and clean */
   .input {
-    @apply bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground placeholder:text-foreground-muted transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary;
+    @apply hover:border-primary/40;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border;
   }
-
-  /* Touch-friendly tap target */
-  .tap-target {
-    @apply min-h-[44px] min-w-[44px];
+  
+  /* Input with icon */
+  .input-with-icon {
+    @apply pl-10;
   }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  
+  /* Label styling */
+  .label {
+    @apply block text-sm font-medium text-foreground-muted mb-1.5;
   }
+  
+  /* Dynamic primary color using CSS variable at runtime */
+  .bg-primary-dynamic { background-color: var(--primary); }
+  .text-primary-dynamic { color: var(--primary); }
+  .border-primary-dynamic { border-color: var(--primary); }
+  .ring-primary-dynamic { --tw-ring-color: var(--primary); }
+  
+  /* App default primary - always #6366f1, doesn't change with user preference */
+  .bg-app-primary { background-color: rgb(99, 102, 241) !important; }
+  .text-app-primary { color: rgb(99, 102, 241) !important; }
+  .border-app-primary { border-color: rgb(99, 102, 241) !important; }
+  .ring-app-primary { --tw-ring-color: rgb(99, 102, 241) !important; }
+  .hover\:bg-app-primary:hover { background-color: rgb(99, 102, 241) !important; }
+  .hover\:text-app-primary:hover { color: rgb(99, 102, 241) !important; }
+  .focus\:ring-app-primary:focus { --tw-ring-color: rgb(99, 102, 241) !important; }
 }

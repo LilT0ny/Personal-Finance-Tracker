@@ -154,6 +154,35 @@ CREATE OR REPLACE TRIGGER trg_parametros_default_on_usuario
     AFTER INSERT ON public.usuarios
     FOR EACH ROW EXECUTE FUNCTION public.fn_crear_parametros_default();
 
+-- Trigger: crear categorías por defecto cuando se crea un usuario
+CREATE OR REPLACE FUNCTION public.fn_crear_categorias_default()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    -- Categorías por defecto para egresos
+    INSERT INTO public.categorias (usuario_id, nombre, icono, color, limite_gastos)
+    VALUES 
+        (NEW.id, 'Comida', 'UtensilsCrossed', '#f97316', 0),
+        (NEW.id, 'Transporte', 'Car', '#3b82f6', 0),
+        (NEW.id, 'Salud', 'Heart', '#ef4444', 0),
+        (NEW.id, 'Entretenimiento', 'Gamepad2', '#a855f7', 0),
+        (NEW.id, 'Compras', 'ShoppingBag', '#ec4899', 0),
+        (NEW.id, 'Servicios', 'Zap', '#eab308', 0),
+        (NEW.id, 'Otros', 'Circle', '#6b7280', 0)
+    ON CONFLICT (usuario_id, nombre) DO NOTHING;
+    
+    -- Categoría por defecto para ingresos
+    INSERT INTO public.categorias (usuario_id, nombre, icono, color, limite_gastos)
+    VALUES (NEW.id, 'Salario', 'PiggyBank', '#22c55e', 0)
+    ON CONFLICT (usuario_id, nombre) DO NOTHING;
+    
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER trg_categorias_default_on_usuario
+    AFTER INSERT ON public.usuarios
+    FOR EACH ROW EXECUTE FUNCTION public.fn_crear_categorias_default();
+
 
 -- =============================================================================
 -- VISTAS
@@ -301,23 +330,25 @@ CREATE POLICY "transacciones: DELETE solo las propias"
 
 -- -----------------------------------------------------------------------
 -- Políticas: parametros_sistema
+-- NOTA: No usamos Supabase Auth, así que permitimos acceso total
+-- El frontend controla que cada usuario acceda solo a sus datos
 -- -----------------------------------------------------------------------
-CREATE POLICY "parametros: SELECT solo los propios"
+CREATE POLICY "parametros: SELECT anyone"
     ON public.parametros_sistema FOR SELECT
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+    USING (true);
 
-CREATE POLICY "parametros: INSERT solo los propios"
+CREATE POLICY "parametros: INSERT anyone"
     ON public.parametros_sistema FOR INSERT
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+    WITH CHECK (true);
 
-CREATE POLICY "parametros: UPDATE solo los propios"
+CREATE POLICY "parametros: UPDATE anyone"
     ON public.parametros_sistema FOR UPDATE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()))
-    WITH CHECK (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+    USING (true)
+    WITH CHECK (true);
 
-CREATE POLICY "parametros: DELETE solo los propios"
+CREATE POLICY "parametros: DELETE anyone"
     ON public.parametros_sistema FOR DELETE
-    USING (usuario_id = (SELECT id FROM public.usuarios WHERE auth_user_id = auth.uid()));
+    USING (true);
 
 
 -- =============================================================================

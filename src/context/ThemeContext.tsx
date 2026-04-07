@@ -18,21 +18,13 @@ function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
 }
 
-// Función para convertir hex a canales RGB
+// Función para convertir hex a canales RGB (sin rgb() y sin espacios para Tailwind)
 function hexToRgbChannels(hex: string): string {
   const clean = hex.replace('#', '');
   const r = parseInt(clean.substring(0, 2), 16);
   const g = parseInt(clean.substring(2, 4), 16);
   const b = parseInt(clean.substring(4, 6), 16);
   return `${r} ${g} ${b}`;
-}
-
-// Función para aplicar el color primario al CSS
-function applyPrimaryColor(color: string) {
-  // Si ya es formato RGB channels (e.g. "99 102 241"), usar directo
-  // Si es hex (e.g. "#6366f1"), convertir
-  const channels = color.startsWith('#') ? hexToRgbChannels(color) : color;
-  document.documentElement.style.setProperty('--primary', channels);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -57,8 +49,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (data?.color_primario) {
+          const channels = hexToRgbChannels(data.color_primario);
+          const rgb = channels.replace(' ', ',');
+          document.documentElement.style.setProperty('--primary', channels);
+          document.documentElement.style.setProperty('--primary-rgb', rgb);
           setPrimaryColorState(data.color_primario);
-          applyPrimaryColor(data.color_primario);
         }
       } catch (err) {
         console.error('Error loading primary color:', err);
@@ -93,16 +88,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const usuarioId = getUsuarioId();
     if (!usuarioId) return;
 
-    // Aplicar visualmente de inmediato
+    const channels = hexToRgbChannels(color);
+    const rgb = channels.replace(' ', ',');
+    
+    document.documentElement.style.setProperty('--primary', channels);
+    document.documentElement.style.setProperty('--primary-rgb', rgb);
     setPrimaryColorState(color);
-    applyPrimaryColor(color);
 
-    // Guardar en Supabase
     try {
       await supabase
         .from('parametros_sistema')
-        .update({ color_primario: color })
-        .eq('usuario_id', usuarioId);
+        .upsert({ 
+          usuario_id: usuarioId,
+          color_primario: color 
+        }, { onConflict: 'usuario_id' });
     } catch (err) {
       console.error('Error saving primary color:', err);
     }

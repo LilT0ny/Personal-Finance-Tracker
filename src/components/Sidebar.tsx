@@ -37,8 +37,9 @@ export function Sidebar({
     { id: 'inicio' as const, label: 'Inicio', icon: PieChart },
     { id: 'ingresos' as const, label: 'Ingresos', icon: ArrowUpCircle },
     { id: 'egresos' as const, label: 'Egresos', icon: ArrowDownCircle },
+        { id: 'categorias' as const, label: 'Categorias', icon: ShoppingBag },
     { id: 'presupuesto' as const, label: 'Presupuesto', icon: Wallet },
-    { id: 'categorias' as const, label: 'Categorias', icon: ShoppingBag },
+
     { id: 'config' as const, label: 'Configuracion', icon: Settings },
   ];
 

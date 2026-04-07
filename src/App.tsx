@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -8,9 +8,7 @@ import { CategoryManager } from './components/CategoryManager';
 import { Sidebar } from './components/Sidebar';
 import { useTransactions } from './hooks/useTransactions';
 import { useBudgets } from './hooks/useBudgets';
-import { useCategories } from './hooks/useCategories';
 import { LoginPage } from './pages/LoginPage';
-import { Onboarding } from './pages/Onboarding';
 import { TransactionPageList } from './pages/TransactionPageList';
 import ConfigPage from './pages/ConfigPage';
 import { CategoryPage } from './pages/CategoryPage';
@@ -25,29 +23,12 @@ function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentSection, setCurrentSection] = useState<SidebarSection>('inicio');
   
   const { transactions, allTransactions, income, expenses, period, setPeriod, customDateRange, setCustomDateRange, categoryFilter, setCategoryFilter, addTransaction } = useTransactions();
   const { budgets } = useBudgets();
-  const { categories, loading: categoriesLoading } = useCategories();
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-
-  // Check if user needs onboarding - only first time (store in localStorage)
-  useEffect(() => {
-    if (!categoriesLoading && categories.length === 0) {
-      const hasOnboarded = localStorage.getItem('hasOnboarded');
-      if (!hasOnboarded) {
-        setShowOnboarding(true);
-      }
-    }
-  }, [categoriesLoading, categories.length]);
-
-  const handleOnboardingComplete = () => {
-    localStorage.setItem('hasOnboarded', 'true');
-    setShowOnboarding(false);
-  };
 
   const handleSaveTransaction = async (
     amount: number,
@@ -68,11 +49,6 @@ function Dashboard() {
   const handleOpenModal = () => {
     setModalOpen(true);
   };
-
-  // Show onboarding if user has no categories
-  if (showOnboarding) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
 
   // Render current section content
   const renderContent = () => {

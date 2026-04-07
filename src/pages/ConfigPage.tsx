@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import { ColorPicker } from '../components/ColorPicker';
 
 export default function ConfigPage() {
-  const { primaryColor, setPrimaryColor, loadingColor: loadingTheme } = useTheme();
+  const { primaryColor } = useTheme();
   const [activeTab, setActiveTab] = useState<'perfil'>('perfil');
   const usuarioId = localStorage.getItem('usuario_id');
   
@@ -25,6 +25,14 @@ export default function ConfigPage() {
     telefono: '',
     fecha_nacimiento: '',
   });
+
+  // Color temporal - solo se aplica cuando guardamos
+  const [colorTemporal, setColorTemporal] = useState(primaryColor);
+
+  // Sincronizar colorTemporal cuando cambia el color global
+  useEffect(() => {
+    setColorTemporal(primaryColor);
+  }, [primaryColor]);
 
   // Cargar datos del usuario
   useEffect(() => {
@@ -61,7 +69,7 @@ export default function ConfigPage() {
     fetchUsuario();
   }, [usuarioId]);
 
-  // Guardar perfil
+  // Guardar perfil y color
   const handleGuardarPerfil = async () => {
     if (!usuarioId || !usuario) return;
     
@@ -80,6 +88,22 @@ export default function ConfigPage() {
         .eq('id', usuario.id);
 
       if (updateError) throw updateError;
+
+      // Guardar color en parametros_sistema
+      await supabase
+        .from('parametros_sistema')
+        .upsert({ 
+          usuario_id: usuarioId,
+          color_primario: colorTemporal 
+        }, { onConflict: 'usuario_id' });
+
+      // Aplicar el color globalmente
+      const channels = colorTemporal.replace('#', '');
+      const r = parseInt(channels.substring(0, 2), 16);
+      const g = parseInt(channels.substring(2, 4), 16);
+      const b = parseInt(channels.substring(4, 6), 16);
+      document.documentElement.style.setProperty('--primary', `${r} ${g} ${b}`);
+      document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
 
       setEditandoPerfil(false);
     } catch (err) {
@@ -220,21 +244,36 @@ export default function ConfigPage() {
                 )}
               </div>
 
-              {/* Color primario */}
+              {/* Color primario - solo editable cuando está en modo edición */}
               <div>
                 <ColorPicker
-                  color={primaryColor}
-                  onChange={(c) => !loadingTheme && setPrimaryColor(c)}
+                  color={editandoPerfil ? colorTemporal : primaryColor}
+                  onChange={(c) => editandoPerfil && setColorTemporal(c)}
                   presets={['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#22c55e', '#f97316']}
                   label="Color de la App"
                 />
+                {!editandoPerfil && (
+                  <p className="text-xs text-foreground-muted mt-1">Editable al presionar "Editar"</p>
+                )}
               </div>
 
               {/* Botones guardar */}
               {editandoPerfil && (
                 <div className="flex gap-2 pt-2">
                   <button
-                    onClick={() => setEditandoPerfil(false)}
+                    onClick={() => {
+                      setEditandoPerfil(false);
+                      setColorTemporal(primaryColor);
+                      if (usuario) {
+                        setFormPerfil({
+                          nombre: usuario.nombre || '',
+                          apellido_paterno: usuario.apellido_paterno || '',
+                          apellido_materno: usuario.apellido_materno || '',
+                          telefono: usuario.telefono || '',
+                          fecha_nacimiento: usuario.fecha_nacimiento || '',
+                        });
+                      }
+                    }}
                     className="flex-1 py-2 bg-background border border-border rounded-xl font-medium"
                   >
                     Cancelar
