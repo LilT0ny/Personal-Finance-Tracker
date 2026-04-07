@@ -293,7 +293,7 @@ export function CategoryPage() {
               onClick={handleSaveCategory}
               disabled={!categoryName.trim() || saving}
               className={cn(
-                "w-full btn-primary py-3",
+                "w-full bg-primary text-white py-3 rounded-xl font-medium",
                 (!categoryName.trim() || saving) && "opacity-50 cursor-not-allowed"
               )}
             >
