@@ -12,13 +12,14 @@ import { useCategories } from './hooks/useCategories';
 import { LoginPage } from './pages/LoginPage';
 import { Onboarding } from './pages/Onboarding';
 import { TransactionPageList } from './pages/TransactionPageList';
-import { ConfigPage } from './pages/ConfigPage';
+import ConfigPage from './pages/ConfigPage';
+import { CategoryPage } from './pages/CategoryPage';
 import { BalanceCard } from './components/BalanceCard';
 import { TransactionList } from './components/TransactionList';
 import { BudgetBuckets } from './components/BudgetBuckets';
 import { BudgetKPIs } from './components/BudgetKPIs';
 
-type SidebarSection = 'inicio' | 'presupuesto' | 'ingresos' | 'egresos' | 'config';
+type SidebarSection = 'inicio' | 'presupuesto' | 'ingresos' | 'egresos' | 'categorias' | 'config';
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -104,6 +105,8 @@ function Dashboard() {
             onCustomDateRangeChange={setCustomDateRange}
           />
         );
+      case 'categorias':
+        return <CategoryPage />;
       case 'config':
         return <ConfigPage />;
       case 'inicio':
@@ -160,6 +163,7 @@ function Dashboard() {
             {currentSection === 'presupuesto' && 'Presupuesto'}
             {currentSection === 'ingresos' && 'Ingresos'}
             {currentSection === 'egresos' && 'Egresos'}
+            {currentSection === 'categorias' && 'Categorias'}
             {currentSection === 'config' && 'Configuración'}
           </h1>
         </header>

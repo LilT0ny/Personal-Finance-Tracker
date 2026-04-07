@@ -18,9 +18,21 @@ function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
 }
 
+// Función para convertir hex a canales RGB
+function hexToRgbChannels(hex: string): string {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `${r} ${g} ${b}`;
+}
+
 // Función para aplicar el color primario al CSS
 function applyPrimaryColor(color: string) {
-  document.documentElement.style.setProperty('--primary', color);
+  // Si ya es formato RGB channels (e.g. "99 102 241"), usar directo
+  // Si es hex (e.g. "#6366f1"), convertir
+  const channels = color.startsWith('#') ? hexToRgbChannels(color) : color;
+  document.documentElement.style.setProperty('--primary', channels);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

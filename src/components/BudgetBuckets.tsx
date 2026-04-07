@@ -273,7 +273,17 @@ export function BudgetBuckets() {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-blue-500 font-medium">Necesidades</span>
-              <span>{percentages.necesidades}%</span>
+              <div className="flex items-center gap-0.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={percentages.necesidades}
+                  onChange={(e) => handlePercentageChange('necesidades', parseInt(e.target.value) || 0)}
+                  className="w-10 bg-transparent text-right font-bold focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="font-bold">%</span>
+              </div>
             </div>
             <input
               type="range"
@@ -282,7 +292,7 @@ export function BudgetBuckets() {
               value={percentages.necesidades}
               onChange={(e) => handlePercentageChange('necesidades', parseInt(e.target.value))}
               className="w-full"
-              style={{ accentColor: '#3b82f6' }}
+              style={{ accentColor: '#3b82f6', '--range-color': '#3b82f6' } as React.CSSProperties}
             />
             {/* Categorías de Necesidades */}
             <div className="mt-3 pt-3 border-t border-border">
@@ -321,7 +331,17 @@ export function BudgetBuckets() {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-violet-500 font-medium">Deseos</span>
-              <span>{percentages.deseos}%</span>
+              <div className="flex items-center gap-0.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={percentages.deseos}
+                  onChange={(e) => handlePercentageChange('deseos', parseInt(e.target.value) || 0)}
+                  className="w-10 bg-transparent text-right font-bold focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="font-bold">%</span>
+              </div>
             </div>
             <input
               type="range"
@@ -330,7 +350,7 @@ export function BudgetBuckets() {
               value={percentages.deseos}
               onChange={(e) => handlePercentageChange('deseos', parseInt(e.target.value))}
               className="w-full"
-              style={{ accentColor: '#8b5cf6' }}
+              style={{ accentColor: '#8b5cf6', '--range-color': '#8b5cf6' } as React.CSSProperties}
             />
             {/* Categorías de Deseos */}
             <div className="mt-3 pt-3 border-t border-border">
@@ -369,7 +389,17 @@ export function BudgetBuckets() {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-green-500 font-medium">Ahorro</span>
-              <span>{percentages.ahorro}%</span>
+              <div className="flex items-center gap-0.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={percentages.ahorro}
+                  onChange={(e) => handlePercentageChange('ahorro', parseInt(e.target.value) || 0)}
+                  className="w-10 bg-transparent text-right font-bold focus:outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="font-bold">%</span>
+              </div>
             </div>
             <input
               type="range"
@@ -378,7 +408,7 @@ export function BudgetBuckets() {
               value={percentages.ahorro}
               onChange={(e) => handlePercentageChange('ahorro', parseInt(e.target.value))}
               className="w-full"
-              style={{ accentColor: '#22c55e' }}
+              style={{ accentColor: '#22c55e', '--range-color': '#22c55e' } as React.CSSProperties}
             />
             {/* Categorías de Ahorro */}
             <div className="mt-3 pt-3 border-t border-border">

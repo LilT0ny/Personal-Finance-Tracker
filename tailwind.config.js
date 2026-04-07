@@ -34,9 +34,7 @@ export default {
           dark: '#2a2a2a',
         },
         primary: {
-          DEFAULT: '#6366f1',
-          light: '#4f46e5',
-          dark: '#6366f1',
+          DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
         },
         success: '#22c55e',
         danger: '#ef4444',

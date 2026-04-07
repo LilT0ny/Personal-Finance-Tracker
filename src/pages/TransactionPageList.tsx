@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, Circle, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Plus, X, Filter, Calendar, BarChart3, ListTree } from 'lucide-react';
 import { Transaction } from '../types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useCategories } from '../hooks/useCategories';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
@@ -28,6 +28,16 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   PiggyBank,
   MoreHorizontal,
   Circle,
+};
+
+const DAY_NAMES: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miercoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sabado',
 };
 
 export function TransactionPageList({ 
@@ -361,47 +371,75 @@ export function TransactionPageList({
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredTransactions.map((transaction) => {
-            // Use category data from database or fallback
-            const categoryName = transaction.category || 'Otros';
-            const categoryColor = transaction.category_color || '#6b7280';
-            const categoryIcon = transaction.category_icon || 'Circle';
-            
-            const Icon = ICON_MAP[categoryIcon] || Circle;
-            
-            return (
-              <div 
-                key={transaction.id}
-                className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border"
-              >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${categoryColor}20` }}
-                >
-                  <span style={{ color: categoryColor }}>
-                    <Icon className="w-5 h-5" />
-                  </span>
+        <div className="space-y-4">
+          {(() => {
+            const grouped = filteredTransactions.reduce((acc, transaction) => {
+              const date = parseISO(transaction.fecha);
+              const dayKey = format(date, 'yyyy-MM-dd');
+              if (!acc[dayKey]) acc[dayKey] = [];
+              acc[dayKey].push(transaction);
+              return acc;
+            }, {} as Record<string, Transaction[]>);
+
+            const sortedKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+            return sortedKeys.map(dayKey => {
+              const dayDate = parseISO(dayKey);
+              const dayName = DAY_NAMES[dayDate.getDay()];
+
+              return (
+                <div key={dayKey}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-foreground">{dayName}</span>
+                    <span className="text-xs text-foreground-muted">{format(dayDate, 'dd MMM', { locale: es })}</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+
+                  <div className="space-y-2">
+                    {grouped[dayKey].map((transaction) => {
+                      const categoryName = transaction.category || 'Otros';
+                      const categoryColor = transaction.category_color || '#6b7280';
+                      const categoryIcon = transaction.category_icon || 'Circle';
+                      
+                      const Icon = ICON_MAP[categoryIcon] || Circle;
+                      
+                      return (
+                        <div 
+                          key={transaction.id}
+                          className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border"
+                        >
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: `${categoryColor}20` }}
+                          >
+                            <span style={{ color: categoryColor }}>
+                              <Icon className="w-5 h-5" />
+                            </span>
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{categoryName}</p>
+                            {transaction.descripcion && (
+                              <p className="text-foreground-muted text-xs truncate">{transaction.descripcion}</p>
+                            )}
+                          </div>
+                          
+                          <div className="text-right shrink-0">
+                            <p className={type === 'expense' ? 'text-danger font-semibold' : 'text-success font-semibold'}>
+                              {type === 'expense' ? '-' : '+'}${transaction.monto.toFixed(2)}
+                            </p>
+                            <p className="text-foreground-muted text-xs">
+                              {format(parseISO(transaction.fecha), 'HH:mm')}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{categoryName}</p>
-                  {transaction.descripcion && (
-                    <p className="text-foreground-muted text-xs truncate">{transaction.descripcion}</p>
-                  )}
-                </div>
-                
-                <div className="text-right shrink-0">
-                  <p className={type === 'expense' ? 'text-danger font-semibold' : 'text-success font-semibold'}>
-                    {type === 'expense' ? '-' : '+'}${transaction.monto.toFixed(2)}
-                  </p>
-                  <p className="text-foreground-muted text-xs">
-                    {format(new Date(transaction.fecha), 'dd MMM', { locale: es })}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       )}
 

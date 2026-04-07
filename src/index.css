@@ -9,7 +9,7 @@
     --foreground: #ffffff;
     --foreground-muted: #a0a0a0;
     --border: #2a2a2a;
-    --primary: #6366f1;
+    --primary: 99 102 241;
   }
 
   .light {
@@ -18,7 +18,7 @@
     --foreground: #1a1a1a;
     --foreground-muted: #6b7280;
     --border: #e5e7eb;
-    --primary: #4f46e5;
+    --primary: 79 70 229;
   }
 
   * {
@@ -71,11 +71,31 @@
   .light ::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
   }
+  /* Custom range input styling */
+  input[type="range"] {
+    @apply h-1.5 bg-border rounded-full appearance-none cursor-pointer transition-all;
+    accent-color: rgb(var(--primary));
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full shadow-sm;
+    background-color: var(--range-color, rgb(var(--primary)));
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px var(--range-color, rgb(var(--primary)));
+    margin-top: -5px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full shadow-sm border-none;
+    background-color: var(--range-color, rgb(var(--primary)));
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px var(--range-color, rgb(var(--primary)));
+  }
 }
 
 @layer components {
   .card {
-    @apply bg-card rounded-2xl p-4 border border-border;
+    @apply bg-card rounded-2xl p-4 border border-border shadow-sm;
   }
 
   .btn-primary {

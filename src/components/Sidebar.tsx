@@ -9,11 +9,12 @@ import {
   Menu,
   X,
   PieChart,
-  Wallet
+  Wallet,
+  ShoppingBag
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'presupuesto' | 'config';
+type SidebarSection = 'inicio' | 'ingresos' | 'egresos' | 'presupuesto' | 'categorias' | 'config';
 
 interface SidebarProps {
   currentSection: SidebarSection;
@@ -37,6 +38,7 @@ export function Sidebar({
     { id: 'ingresos' as const, label: 'Ingresos', icon: ArrowUpCircle },
     { id: 'egresos' as const, label: 'Egresos', icon: ArrowDownCircle },
     { id: 'presupuesto' as const, label: 'Presupuesto', icon: Wallet },
+    { id: 'categorias' as const, label: 'Categorias', icon: ShoppingBag },
     { id: 'config' as const, label: 'Configuracion', icon: Settings },
   ];
 
