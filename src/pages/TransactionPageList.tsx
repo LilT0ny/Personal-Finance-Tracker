@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp, Circle, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Plus, X, Filter, Calendar, BarChart3, ListTree } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, Circle, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Plus, X, Filter, Calendar, BarChart3, ListTree, Edit3, Trash2 } from 'lucide-react';
 import { Transaction } from '../types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useCategories } from '../hooks/useCategories';
+import { useTransactions } from '../hooks/useTransactions';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { cn } from '../lib/utils';
 
@@ -51,9 +52,12 @@ export function TransactionPageList({
   onCustomDateRangeChange
 }: TransactionPageListProps) {
   const { categories } = useCategories();
+  const { updateTransaction, deleteTransaction } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'yearly' | 'monthly' | 'weekly' | 'daily'>('monthly');
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   // Generate month string (YYYY-MM) for monthly view
   const now = new Date();
@@ -436,6 +440,29 @@ export function TransactionPageList({
                               {format(parseISO(transaction.fecha), 'HH:mm')}
                             </p>
                           </div>
+                          
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingTransaction(transaction)}
+                              className="p-2 rounded-lg hover:bg-background"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4 text-foreground-muted" />
+                            </button>
+                            <button
+                              onClick={() => deleteConfirmId === transaction.id 
+                                ? deleteTransaction(transaction.id).then(() => setDeleteConfirmId(null)) 
+                                : setDeleteConfirmId(transaction.id)}
+                              className={cn(
+                                "p-2 rounded-lg",
+                                deleteConfirmId === transaction.id ? "bg-danger text-white" : "hover:bg-background"
+                              )}
+                              title={deleteConfirmId === transaction.id ? "Confirmar eliminar" : "Eliminar"}
+                            >
+                              <Trash2 className={cn("w-4 h-4", deleteConfirmId === transaction.id ? "text-white" : "text-danger")} />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -545,6 +572,91 @@ export function TransactionPageList({
             .animate-slide-up { animation: slide-up 0.3s ease-out; }
             .animate-fade-in { animation: fade-in 0.2s ease-out; }
           `}</style>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setEditingTransaction(null)} />
+          
+          <div className="relative w-full lg:max-w-md bg-card rounded-t-3xl lg:rounded-2xl p-6 animate-slide-up max-h-[80vh] overflow-y-auto">
+            <button onClick={() => setEditingTransaction(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-background">
+              <X className="w-5 h-5 text-foreground-muted" />
+            </button>
+            
+            <h3 className="font-bold text-lg mb-4">Editar Transacción</h3>
+            
+            {/* Amount */}
+            <div className="mb-4">
+              <label className="text-foreground-muted text-sm block mb-2">Monto</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={editingTransaction.monto.toString()}
+                onChange={(e) => {
+                  const val = e.target.value.replace(',', '.');
+                  if (/^\d*\.?\d{0,2}$/.test(val) || val === '') {
+                    setEditingTransaction({ ...editingTransaction, monto: parseFloat(val) || 0 });
+                  }
+                }}
+                className="input w-full text-2xl font-bold text-center"
+              />
+            </div>
+            
+            {/* Category */}
+            <div className="mb-4">
+              <label className="text-foreground-muted text-sm block mb-2">Categoría</label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                {categories.filter(c => type === 'income' ? c.id !== 'expense' : true).map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setEditingTransaction({ ...editingTransaction, categoria_id: cat.id })}
+                    className={cn(
+                      "p-3 rounded-xl border transition-all flex items-center gap-2",
+                      editingTransaction.categoria_id === cat.id 
+                        ? "border-primary bg-primary/10" 
+                        : "border-border hover:bg-background"
+                    )}
+                  >
+                    <div 
+                      className="w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${cat.color}20` }}
+                    >
+                      <span style={{ color: cat.color }} className="text-xs font-bold">{cat.nombre[0]}</span>
+                    </div>
+                    <span className="text-sm">{cat.nombre}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Note */}
+            <div className="mb-4">
+              <label className="text-foreground-muted text-sm block mb-2">Descripción</label>
+              <input
+                type="text"
+                value={editingTransaction.descripcion || ''}
+                onChange={(e) => setEditingTransaction({ ...editingTransaction, descripcion: e.target.value })}
+                className="input w-full"
+                placeholder="Descripción..."
+              />
+            </div>
+            
+            <button
+              onClick={async () => {
+                await updateTransaction(editingTransaction.id, {
+                  monto: editingTransaction.monto,
+                  categoria_id: editingTransaction.categoria_id,
+                  descripcion: editingTransaction.descripcion || undefined,
+                });
+                setEditingTransaction(null);
+              }}
+              className="w-full bg-primary text-white py-3 rounded-xl font-medium"
+            >
+              Guardar
+            </button>
+          </div>
         </div>
       )}
     </div>
