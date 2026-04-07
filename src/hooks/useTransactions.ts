@@ -160,6 +160,23 @@ export function useTransactions() {
     await fetchTransactions();
   };
 
+  // Update transaction
+  const updateTransaction = async (id: string, updates: {
+    monto?: number;
+    categoria_id?: string;
+    descripcion?: string;
+    fecha?: string;
+    tipo?: string;
+  }) => {
+    const { error } = await supabase
+      .from('transacciones')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+    await fetchTransactions();
+  };
+
   // Filter transactions by period
   const filteredTransactions = useMemo(() => {
     const now = new Date();
@@ -231,6 +248,7 @@ export function useTransactions() {
     setCategoryFilter,
     addTransaction,
     deleteTransaction,
+    updateTransaction,
     refetch: fetchTransactions,
   };
 }

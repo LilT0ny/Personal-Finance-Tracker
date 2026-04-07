@@ -7,12 +7,17 @@ import {
   Zap, 
   PiggyBank, 
   MoreHorizontal,
-  Circle
+  Circle,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { Transaction } from '../types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useTransactions } from '../hooks/useTransactions';
+import { useCategories } from '../hooks/useCategories';
+import { cn } from '../lib/utils';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -41,6 +46,10 @@ const DAY_NAMES: Record<number, string> = {
 };
 
 export function TransactionList({ transactions }: TransactionListProps) {
+  const { deleteTransaction, updateTransaction } = useTransactions();
+  const { categories } = useCategories();
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
     
@@ -100,10 +109,15 @@ export function TransactionList({ transactions }: TransactionListProps) {
               
               const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
               
+              const isDeleting = deleteConfirmId === transaction.id;
+              
               return (
                 <div 
                   key={transaction.id}
-                  className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border"
+                  className={cn(
+                    "flex items-center gap-3 p-3 bg-card rounded-xl border border-border",
+                    isDeleting && "border-danger"
+                  )}
                 >
                   <div 
                     className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -129,12 +143,167 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       {format(parseISO(transaction.fecha), 'HH:mm')}
                     </p>
                   </div>
+                  
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setEditingTransaction(transaction)}
+                      className="p-2 rounded-lg hover:bg-background"
+                      title="Editar"
+                    >
+                      <Edit3 className="w-4 h-4 text-foreground-muted" />
+                    </button>
+                    <button
+                      onClick={() => isDeleting ? deleteTransaction(transaction.id).then(() => setDeleteConfirmId(null)) : setDeleteConfirmId(transaction.id)}
+                      className={cn(
+                        "p-2 rounded-lg",
+                        isDeleting ? "bg-danger text-white" : "hover:bg-background"
+                      )}
+                      title={isDeleting ? "Confirmar eliminar" : "Eliminar"}
+                    >
+                      <Trash2 className={cn("w-4 h-4", isDeleting ? "text-white" : "text-danger")} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
       ))}
+
+      {/* Edit Modal */}
+      {editingTransaction && (
+        <TransactionEditModal 
+          transaction={editingTransaction}
+          categories={categories}
+          onSave={async (updates) => {
+            await updateTransaction(editingTransaction.id, updates);
+            setEditingTransaction(null);
+          }}
+          onClose={() => setEditingTransaction(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Edit Modal Component
+interface TransactionEditModalProps {
+  transaction: Transaction;
+  categories: { id: string; nombre: string; icono: string; color: string }[];
+  onSave: (updates: { monto?: number; categoria_id?: string; descripcion?: string }) => Promise<void>;
+  onClose: () => void;
+}
+
+function TransactionEditModal({ transaction, categories, onSave, onClose }: TransactionEditModalProps) {
+  const [amount, setAmount] = useState(transaction.monto.toString());
+  const [selectedCategory, setSelectedCategory] = useState(transaction.categoria_id);
+  const [note, setNote] = useState(transaction.descripcion || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const normalizedAmount = amount.replace(',', '.');
+    const parsedAmount = parseFloat(normalizedAmount);
+    if (!parsedAmount || parsedAmount <= 0) return;
+    
+    setSaving(true);
+    try {
+      await onSave({
+        monto: parsedAmount,
+        categoria_id: selectedCategory,
+        descripcion: note || undefined,
+      });
+    } catch (err) {
+      console.error('Error updating transaction:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative w-full lg:max-w-md bg-card rounded-t-3xl lg:rounded-2xl p-6 animate-slide-up max-h-[80vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-background">
+          ✕
+        </button>
+        
+        <h3 className="font-bold text-lg mb-4">Editar Transacción</h3>
+        
+        {/* Amount */}
+        <div className="mb-4">
+          <label className="text-foreground-muted text-sm block mb-2">Monto</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => {
+              const val = e.target.value.replace(',', '.');
+              if (/^\d*\.?\d{0,2}$/.test(val) || val === '') {
+                setAmount(val);
+              }
+            }}
+            className="input w-full text-2xl font-bold text-center"
+            placeholder="0.00"
+          />
+        </div>
+        
+        {/* Category */}
+        <div className="mb-4">
+          <label className="text-foreground-muted text-sm block mb-2">Categoría</label>
+          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={cn(
+                  "p-3 rounded-xl border transition-all flex items-center gap-2",
+                  selectedCategory === cat.id 
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:bg-background"
+                )}
+              >
+                <div 
+                  className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${cat.color}20` }}
+                >
+                  <span style={{ color: cat.color }} className="text-xs font-bold">{cat.nombre[0]}</span>
+                </div>
+                <span className="text-sm">{cat.nombre}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Note */}
+        <div className="mb-4">
+          <label className="text-foreground-muted text-sm block mb-2">Descripción (opcional)</label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="input w-full"
+            placeholder="Descripción..."
+          />
+        </div>
+        
+        <button
+          onClick={handleSave}
+          disabled={!amount || parseFloat(amount.replace(',', '.')) <= 0 || saving}
+          className={cn(
+            "w-full bg-primary text-white py-3 rounded-xl font-medium",
+            (!amount || parseFloat(amount.replace(',', '.')) <= 0 || saving) && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+        
+        <style>{`
+          @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+          .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        `}</style>
+      </div>
     </div>
   );
 }
