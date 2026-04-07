@@ -51,10 +51,10 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
   };
 
   const handleAmountChange = (value: string) => {
-    // Permitir punto o coma como separador decimal
-    const normalized = value.replace(',', '.');
-    const regex = /^\d*\.?\d{0,2}$/;
-    if (regex.test(normalized) || value === '') {
+    // Permitir punto O coma como separador decimal - para PC y iPhone
+    // Permitir: 100, 100.50, 100,50, .50, 0.50
+    const regex = /^\d*[,.]?\d{0,2}$/;
+    if (regex.test(value) || value === '') {
       setAmount(value);
     }
   };
@@ -149,8 +149,8 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
 
           <button
             onClick={handleSave}
-            disabled={!amount || !selectedCategory || parseFloat(amount) <= 0}
-            className={cn("w-full btn-primary py-4 text-lg font-bold", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
+            disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0}
+            className={cn("w-full bg-app-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
           >
             Guardar
           </button>
@@ -251,8 +251,8 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
 
         <button
           onClick={handleSave}
-          disabled={!amount || !selectedCategory || parseFloat(amount) <= 0}
-          className={cn("w-full btn-primary py-4 text-lg font-bold", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
+          disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0}
+          className={cn("w-full bg-app-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
         >
           Guardar
         </button>

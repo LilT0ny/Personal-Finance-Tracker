@@ -127,10 +127,10 @@ export function TransactionPageList({
   };
 
   const handleAmountChange = (value: string) => {
-    // Permitir punto o coma como separador decimal
-    const normalized = value.replace(',', '.');
-    const regex = /^\d*\.?\d{0,2}$/;
-    if (regex.test(normalized) || value === '') {
+    // Permitir punto O coma como separador decimal - para PC y iPhone
+    // Permitir: 100, 100.50, 100,50, .50, 0.50
+    const regex = /^\d*[,.]?\d{0,2}$/;
+    if (regex.test(value) || value === '') {
       setAmount(value);
     }
   };
