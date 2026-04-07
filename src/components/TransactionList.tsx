@@ -9,7 +9,8 @@ import {
   MoreHorizontal,
   Circle,
   Edit3,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { Transaction } from '../types';
 import { format, parseISO } from 'date-fns';
@@ -46,10 +47,10 @@ const DAY_NAMES: Record<number, string> = {
 };
 
 export function TransactionList({ transactions }: TransactionListProps) {
-  const { deleteTransaction, updateTransaction } = useTransactions();
+  const { updateTransaction, deleteTransaction } = useTransactions();
   const { categories } = useCategories();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
     
@@ -109,7 +110,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
               
               const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
               
-              const isDeleting = deleteConfirmId === transaction.id;
+              const isDeleting = deletingTransaction?.id === transaction.id;
               
               return (
                 <div 
@@ -154,14 +155,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       <Edit3 className="w-4 h-4 text-foreground-muted" />
                     </button>
                     <button
-                      onClick={() => isDeleting ? deleteTransaction(transaction.id).then(() => setDeleteConfirmId(null)) : setDeleteConfirmId(transaction.id)}
-                      className={cn(
-                        "p-2 rounded-lg",
-                        isDeleting ? "bg-danger text-white" : "hover:bg-background"
-                      )}
-                      title={isDeleting ? "Confirmar eliminar" : "Eliminar"}
+                      onClick={() => setDeletingTransaction(transaction)}
+                      className="p-2 rounded-lg hover:bg-background"
+                      title="Eliminar"
                     >
-                      <Trash2 className={cn("w-4 h-4", isDeleting ? "text-white" : "text-danger")} />
+                      <Trash2 className="w-4 h-4 text-danger" />
                     </button>
                   </div>
                 </div>
@@ -183,6 +181,18 @@ export function TransactionList({ transactions }: TransactionListProps) {
           onClose={() => setEditingTransaction(null)}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingTransaction && (
+        <DeleteConfirmModal
+          transaction={deletingTransaction}
+          onConfirm={async () => {
+            await deleteTransaction(deletingTransaction.id);
+            setDeletingTransaction(null);
+          }}
+          onCancel={() => setDeletingTransaction(null)}
+        />
+      )}
     </div>
   );
 }
@@ -200,6 +210,8 @@ function TransactionEditModal({ transaction, categories, onSave, onClose }: Tran
   const [selectedCategory, setSelectedCategory] = useState(transaction.categoria_id);
   const [note, setNote] = useState(transaction.descripcion || '');
   const [saving, setSaving] = useState(false);
+
+  const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
 
   const handleSave = async () => {
     const normalizedAmount = amount.replace(',', '.');
@@ -220,90 +232,166 @@ function TransactionEditModal({ transaction, categories, onSave, onClose }: Tran
     }
   };
 
+  const handleAmountChange = (value: string) => {
+    const regex = /^\d*[,.]?\d{0,2}$/;
+    if (regex.test(value) || value === '') {
+      setAmount(value);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative w-full lg:max-w-md bg-card rounded-t-3xl lg:rounded-2xl p-6 animate-slide-up max-h-[80vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-background">
-          ✕
+      <div className="relative w-full lg:max-w-md bg-card rounded-t-3xl lg:rounded-2xl p-6 animate-slide-up lg:animate-fade-in max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-4 right-4 p-2 tap-target rounded-full hover:bg-background">
+          <X className="w-5 h-5 text-foreground-muted" />
         </button>
-        
-        <h3 className="font-bold text-lg mb-4">Editar Transacción</h3>
-        
-        {/* Amount */}
+
+        <h2 className="text-xl font-bold mb-4">
+          Editar {isExpense ? 'Egreso' : 'Ingreso'}
+        </h2>
+
+        {/* Amount Input */}
         <div className="mb-4">
           <label className="text-foreground-muted text-sm block mb-2">Monto</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => {
-              const val = e.target.value.replace(',', '.');
-              if (/^\d*\.?\d{0,2}$/.test(val) || val === '') {
-                setAmount(val);
-              }
-            }}
-            className="input w-full text-2xl font-bold text-center"
-            placeholder="0.00"
-          />
-        </div>
-        
-        {/* Category */}
-        <div className="mb-4">
-          <label className="text-foreground-muted text-sm block mb-2">Categoría</label>
-          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={cn(
-                  "p-3 rounded-xl border transition-all flex items-center gap-2",
-                  selectedCategory === cat.id 
-                    ? "border-primary bg-primary/10" 
-                    : "border-border hover:bg-background"
-                )}
-              >
-                <div 
-                  className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${cat.color}20` }}
-                >
-                  <span style={{ color: cat.color }} className="text-xs font-bold">{cat.nombre[0]}</span>
-                </div>
-                <span className="text-sm">{cat.nombre}</span>
-              </button>
-            ))}
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-foreground-muted">$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              placeholder="0.00"
+              className="w-full bg-background border border-border rounded-xl py-4 pl-10 pr-4 text-3xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
+              autoFocus
+            />
           </div>
         </div>
-        
-        {/* Note */}
+
+        {/* Category Selection */}
         <div className="mb-4">
-          <label className="text-foreground-muted text-sm block mb-2">Descripción (opcional)</label>
+          <label className="text-foreground-muted text-sm block mb-2">Categoría</label>
+          {categories.length === 0 ? (
+            <p className="text-foreground-muted text-sm py-4">
+              No hay categorías.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {categories.map(cat => {
+                const Icon = ICON_MAP[cat.icono] || Circle;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={cn(
+                      "flex flex-col items-center p-2 rounded-xl transition-all",
+                      selectedCategory === cat.id ? "bg-card border-2" : "bg-background"
+                    )}
+                    style={selectedCategory === cat.id ? { borderColor: cat.color } : {}}
+                  >
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${cat.color}20` }}>
+                      <span style={{ color: cat.color }}>
+                        <Icon className="w-4 h-4" />
+                      </span>
+                    </div>
+                    <span className="text-xs mt-1 truncate w-full text-center">{cat.nombre}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Note Input */}
+        <div className="mb-4">
+          <label className="text-foreground-muted text-sm block mb-2">Nota (opcional)</label>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="input w-full"
             placeholder="Descripción..."
+            className="input w-full"
           />
         </div>
-        
+
         <button
           onClick={handleSave}
           disabled={!amount || parseFloat(amount.replace(',', '.')) <= 0 || saving}
           className={cn(
-            "w-full bg-primary text-white py-3 rounded-xl font-medium",
+            "w-full py-4 text-lg font-bold rounded-xl",
+            isExpense 
+              ? "bg-danger hover:bg-danger/90 text-white" 
+              : "bg-success hover:bg-success/90 text-white",
             (!amount || parseFloat(amount.replace(',', '.')) <= 0 || saving) && "opacity-50 cursor-not-allowed"
           )}
         >
           {saving ? 'Guardando...' : 'Guardar'}
         </button>
-        
-        <style>{`
-          @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-          .animate-slide-up { animation: slide-up 0.3s ease-out; }
-        `}</style>
       </div>
+
+      <style>{`
+        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+      `}</style>
+    </div>
+  );
+}
+
+// Delete Confirmation Modal
+function DeleteConfirmModal({ 
+  transaction, 
+  onConfirm, 
+  onCancel 
+}: { 
+  transaction: Transaction; 
+  onConfirm: () => void; 
+  onCancel: () => void;
+}) {
+  const isExpense = transaction.tipo === 'Egreso' || transaction.tipo === 'expense';
+  const categoryName = transaction.category || 'Otros';
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+      
+      <div className="relative w-full max-w-sm bg-card rounded-2xl p-6 shadow-2xl animate-fade-in">
+        <h3 className="text-lg font-bold mb-4 text-center">¿Eliminar transacción?</h3>
+        
+        <div className="bg-background rounded-xl p-4 mb-4">
+          <p className="text-center text-foreground-muted text-sm mb-2">
+            Esta acción no se puede deshacer
+          </p>
+          <p className={cn("text-center text-2xl font-bold", isExpense ? "text-danger" : "text-success")}>
+            {isExpense ? '-' : '+'}${transaction.monto.toFixed(2)}
+          </p>
+          <p className="text-center text-foreground-muted text-sm mt-1">
+            {categoryName}
+          </p>
+        </div>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 bg-background border border-border rounded-xl font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 bg-danger text-white rounded-xl font-medium"
+          >
+            Eliminar
+          </button>
+        </div>
+      </div>
+      
+      <style>{`
+        @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+      `}</style>
     </div>
   );
 }

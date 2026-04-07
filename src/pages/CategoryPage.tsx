@@ -29,11 +29,12 @@ export function CategoryPage() {
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<Categoria | null>(null);
   const [editingCategory, setEditingCategory] = useState<Categoria | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [categoryIcon, setCategoryIcon] = useState('Circle');
   const [categoryColor, setCategoryColor] = useState('#6b7280');
-  const [categoryLimit, setCategoryLimit] = useState<string>('');
+  const [categoryLimit, setCategoryLimit] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Get icon component
@@ -114,19 +115,9 @@ export function CategoryPage() {
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Esta seguro de eliminar esta categoria?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('categorias')
-        .delete()
-        .eq('id', categoryId);
-
-      if (error) throw error;
-      deleteCategory(categoryId);
-    } catch (err) {
-      console.error('Error deleting category:', err);
-      alert('Error al eliminar categoria');
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      setDeletingCategory(category);
     }
   };
 
@@ -304,6 +295,62 @@ export function CategoryPage() {
           <style>{`
             @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
             .animate-slide-up { animation: slide-up 0.3s ease-out; }
+          `}</style>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeletingCategory(null)} />
+          
+          <div className="relative w-full max-w-sm bg-card rounded-2xl p-6 shadow-2xl animate-fade-in">
+            <h3 className="text-lg font-bold mb-4 text-center">¿Eliminar categoría?</h3>
+            
+            <div className="bg-background rounded-xl p-4 mb-4">
+              <p className="text-center text-foreground-muted text-sm mb-2">
+                Esta acción no se puede deshacer
+              </p>
+              <p className="text-center text-lg font-bold">
+                {deletingCategory.nombre}
+              </p>
+              <p className="text-center text-foreground-muted text-xs mt-1">
+                Todas las transacciones en esta categoría perderán su categoría
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingCategory(null)}
+                className="flex-1 py-3 bg-background border border-border rounded-xl font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from('categorias')
+                      .delete()
+                      .eq('id', deletingCategory.id);
+                    if (error) throw error;
+                    deleteCategory(deletingCategory.id);
+                    setDeletingCategory(null);
+                  } catch (err) {
+                    console.error('Error deleting category:', err);
+                    alert('Error al eliminar categoría');
+                  }
+                }}
+                className="flex-1 py-3 bg-danger text-white rounded-xl font-medium"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+          
+          <style>{`
+            @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+            .animate-fade-in { animation: fade-in 0.2s ease-out; }
           `}</style>
         </div>
       )}
