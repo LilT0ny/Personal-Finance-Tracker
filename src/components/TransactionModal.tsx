@@ -150,7 +150,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
           <button
             onClick={handleSave}
             disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0}
-            className={cn("w-full bg-app-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
+            className={cn("w-full bg-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
           >
             Guardar
           </button>
@@ -252,7 +252,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
         <button
           onClick={handleSave}
           disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0}
-          className={cn("w-full bg-app-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
+          className={cn("w-full bg-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
         >
           Guardar
         </button>
