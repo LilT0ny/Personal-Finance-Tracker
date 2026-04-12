@@ -27,3 +27,6 @@ npm-debug.log*
 
 # Testing
 coverage/
+
+# Documentation and Business Logic
+Informacion y contexto del sistema/
