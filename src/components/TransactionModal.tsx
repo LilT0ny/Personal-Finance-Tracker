@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (amount: number, category: string, type: 'income' | 'expense', note?: string) => void;
+  onSave: (amount: number, category: string, type: 'income' | 'expense', note?: string) => Promise<void>;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -18,6 +18,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [note, setNote] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [saving, setSaving] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const { categories } = useCategories();
 
@@ -41,13 +42,17 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
     }
   }, [isOpen]);
 
-  const handleSave = () => {
-    // Normalizar: convertir coma a punto
+  const handleSave = async () => {
     const normalizedAmount = amount.replace(',', '.');
     const parsedAmount = parseFloat(normalizedAmount);
-    if (!amount || parsedAmount <= 0 || !selectedCategory) return;
-    
-    onSave(parsedAmount, selectedCategory, type, note || undefined);
+    if (!amount || parsedAmount <= 0 || !selectedCategory || saving) return;
+
+    setSaving(true);
+    try {
+      await onSave(parsedAmount, selectedCategory, type, note || undefined);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAmountChange = (value: string) => {
@@ -149,10 +154,10 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
 
           <button
             onClick={handleSave}
-            disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0}
-            className={cn("w-full bg-primary text-white py-4 text-lg font-bold rounded-xl", (!amount || !selectedCategory) && "opacity-50 cursor-not-allowed")}
+            disabled={!amount || !selectedCategory || parseFloat(amount.replace(',', '.')) <= 0 || saving}
+            className={cn("w-full bg-primary text-white py-4 text-lg font-bold rounded-xl flex items-center justify-center gap-2", (!amount || !selectedCategory || saving) && "opacity-50 cursor-not-allowed")}
           >
-            Guardar
+            {saving ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Guardar'}
           </button>
         </div>
 

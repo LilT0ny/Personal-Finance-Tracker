@@ -16,12 +16,13 @@ import { Transaction } from '../types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useMemo, useState } from 'react';
-import { useTransactions } from '../hooks/useTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { cn } from '../lib/utils';
 
 interface TransactionListProps {
   transactions: Transaction[];
+  onUpdate: (id: string, updates: { monto?: number; categoria_id?: string; descripcion?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -46,8 +47,7 @@ const DAY_NAMES: Record<number, string> = {
   6: 'Sabado',
 };
 
-export function TransactionList({ transactions }: TransactionListProps) {
-  const { updateTransaction, deleteTransaction } = useTransactions();
+export function TransactionList({ transactions, onUpdate, onDelete }: TransactionListProps) {
   const { categories } = useCategories();
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
@@ -171,11 +171,11 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
       {/* Edit Modal */}
       {editingTransaction && (
-        <TransactionEditModal 
+        <TransactionEditModal
           transaction={editingTransaction}
           categories={categories}
           onSave={async (updates) => {
-            await updateTransaction(editingTransaction.id, updates);
+            await onUpdate(editingTransaction.id, updates);
             setEditingTransaction(null);
           }}
           onClose={() => setEditingTransaction(null)}
@@ -187,7 +187,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
         <DeleteConfirmModal
           transaction={deletingTransaction}
           onConfirm={async () => {
-            await deleteTransaction(deletingTransaction.id);
+            await onDelete(deletingTransaction.id);
             setDeletingTransaction(null);
           }}
           onCancel={() => setDeletingTransaction(null)}

@@ -100,7 +100,7 @@ export function CategoryBudgetChart({ transactions, budgets, period }: CategoryB
       limitValue = budget?.limit_amount || monthlySpent * 1.2;
     } else if (period === 'year') {
       displaySpent = yearlySpent;
-      limitValue = (budget?.limit_amount || monthlySpent * 12) * 12;
+      limitValue = budget?.limit_amount ? budget.limit_amount * 12 : monthlySpent * 12;
     } else {
       // All time
       displaySpent = transactions

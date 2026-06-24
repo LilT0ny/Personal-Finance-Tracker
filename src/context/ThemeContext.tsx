@@ -50,7 +50,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
         if (data?.color_primario) {
           const channels = hexToRgbChannels(data.color_primario);
-          const rgb = channels.replace(' ', ',');
+          const rgb = channels.replace(/ /g, ',');
           document.documentElement.style.setProperty('--primary', channels);
           document.documentElement.style.setProperty('--primary-rgb', rgb);
           setPrimaryColorState(data.color_primario);
@@ -89,7 +89,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (!usuarioId) return;
 
     const channels = hexToRgbChannels(color);
-    const rgb = channels.replace(' ', ',');
+    const rgb = channels.replace(/ /g, ',');
     
     document.documentElement.style.setProperty('--primary', channels);
     document.documentElement.style.setProperty('--primary-rgb', rgb);

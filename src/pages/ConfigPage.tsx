@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import { ColorPicker } from '../components/ColorPicker';
 
 export default function ConfigPage() {
-  const { primaryColor } = useTheme();
+  const { primaryColor, setPrimaryColor } = useTheme();
   const [activeTab, setActiveTab] = useState<'perfil'>('perfil');
   const usuarioId = localStorage.getItem('usuario_id');
   
@@ -16,6 +16,7 @@ export default function ConfigPage() {
   const [loadingUsuario, setLoadingUsuario] = useState(true);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   // Formulario perfil
   const [formPerfil, setFormPerfil] = useState({
@@ -72,8 +73,9 @@ export default function ConfigPage() {
   // Guardar perfil y color
   const handleGuardarPerfil = async () => {
     if (!usuarioId || !usuario) return;
-    
+
     setGuardandoPerfil(true);
+    setSaveError(null);
     try {
       // Actualizar usuario
       const { error: updateError } = await supabase
@@ -89,26 +91,13 @@ export default function ConfigPage() {
 
       if (updateError) throw updateError;
 
-      // Guardar color en parametros_sistema
-      await supabase
-        .from('parametros_sistema')
-        .upsert({ 
-          usuario_id: usuarioId,
-          color_primario: colorTemporal 
-        }, { onConflict: 'usuario_id' });
-
-      // Aplicar el color globalmente
-      const channels = colorTemporal.replace('#', '');
-      const r = parseInt(channels.substring(0, 2), 16);
-      const g = parseInt(channels.substring(2, 4), 16);
-      const b = parseInt(channels.substring(4, 6), 16);
-      document.documentElement.style.setProperty('--primary', `${r} ${g} ${b}`);
-      document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+      // Guardar y aplicar color via ThemeContext (persiste en Supabase + actualiza DOM + estado)
+      await setPrimaryColor(colorTemporal);
 
       setEditandoPerfil(false);
     } catch (err) {
       console.error('Error guardando perfil:', err);
-      alert('Error al guardar perfil');
+      setSaveError('Error al guardar perfil. Intentá de nuevo.');
     } finally {
       setGuardandoPerfil(false);
     }
@@ -259,7 +248,11 @@ export default function ConfigPage() {
 
               {/* Botones guardar */}
               {editandoPerfil && (
-                <div className="flex gap-2 pt-2">
+                <div className="space-y-2 pt-2">
+                  {saveError && (
+                    <p className="text-sm text-danger text-center">{saveError}</p>
+                  )}
+                  <div className="flex gap-2">
                   <button
                     onClick={() => {
                       setEditandoPerfil(false);
@@ -292,6 +285,7 @@ export default function ConfigPage() {
                       </>
                     )}
                   </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -451,14 +451,14 @@ export function BalanceCard(props: BalanceCardProps) {
                             )}
 
                             {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-950 border border-gray-700/80 rounded-xl px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 whitespace-nowrap pointer-events-none shadow-xl shadow-black/50">
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl px-3 py-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 whitespace-nowrap pointer-events-none shadow-xl">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <span style={{ color: item.color }}><IconComponent className="w-3 h-3" /></span>
                                 <p className="text-xs font-bold" style={{ color: item.color }}>{item.name}</p>
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-[10px] text-gray-400">Gastado: <span className="font-semibold text-white">${item.spent.toFixed(2)}</span></p>
-                                {item.limit > 0 && <p className="text-[10px] text-gray-400">Limite: <span className="font-semibold text-gray-200">${item.limit.toFixed(2)}</span></p>}
+                                <p className="text-[10px] text-foreground-muted">Gastado: <span className="font-semibold text-foreground">${item.spent.toFixed(2)}</span></p>
+                                {item.limit > 0 && <p className="text-[10px] text-foreground-muted">Limite: <span className="font-semibold text-foreground">${item.limit.toFixed(2)}</span></p>}
                                 {item.limit > 0 && (
                                   <p className="text-[10px] font-semibold" style={{ color: diff >= 0 ? '#4ade80' : '#f87171' }}>
                                     {diff >= 0 ? `+$${diff.toFixed(2)} disponible` : `$${Math.abs(diff).toFixed(2)} excedido`}
@@ -466,7 +466,7 @@ export function BalanceCard(props: BalanceCardProps) {
                                 )}
                               </div>
                               <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-1 overflow-hidden">
-                                <div className="w-2 h-2 bg-gray-950 border-r border-b border-gray-700/80 rotate-45 -translate-y-1" />
+                                <div className="w-2 h-2 bg-card border-r border-b border-border rotate-45 -translate-y-1" />
                               </div>
                             </div>
                           </div>

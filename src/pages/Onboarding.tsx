@@ -17,6 +17,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [customCategories, setCustomCategories] = useState<CategoryConfig[]>([]);
   const [limits, setLimits] = useState<Record<string, number>>({});
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev => 
@@ -41,18 +43,37 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   };
 
   const handleComplete = async () => {
-    // Add predefined selected categories
-    for (const catId of selectedCategories) {
-      const predefined = PREDEFINED_CATEGORIES.find(c => c.id === catId);
-      if (predefined) {
+    setCompleting(true);
+    setCompleteError(null);
+    try {
+      for (const catId of selectedCategories) {
+        const predefined = PREDEFINED_CATEGORIES.find(c => c.id === catId);
+        if (predefined) {
+          const category = await addCategory({
+            nombre: predefined.label,
+            icono: predefined.icon,
+            color: predefined.color,
+          });
+
+          const limit = limits[catId];
+          if (limit && limit > 0 && category) {
+            await addBudget({
+              categoria_id: category.id,
+              limit_amount: limit,
+              period: 'monthly',
+              type: 'expense',
+            });
+          }
+        }
+      }
+      for (const cat of customCategories) {
         const category = await addCategory({
-          nombre: predefined.label,
-          icono: predefined.icon,
-          color: predefined.color,
+          nombre: cat.label,
+          icono: cat.icon,
+          color: cat.color,
         });
-        
-        // Create budget if limit is set
-        const limit = limits[catId];
+
+        const limit = limits[cat.id];
         if (limit && limit > 0 && category) {
           await addBudget({
             categoria_id: category.id,
@@ -62,27 +83,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           });
         }
       }
+      onComplete();
+    } catch (err) {
+      console.error('Error completing onboarding:', err);
+      setCompleteError('Error al guardar la configuración. Intentá de nuevo.');
+    } finally {
+      setCompleting(false);
     }
-    // Add custom categories
-    for (const cat of customCategories) {
-      const category = await addCategory({
-        nombre: cat.label,
-        icono: cat.icon,
-        color: cat.color,
-      });
-      
-      // Create budget if limit is set
-      const limit = limits[cat.id];
-      if (limit && limit > 0 && category) {
-        await addBudget({
-          categoria_id: category.id,
-          limit_amount: limit,
-          period: 'monthly',
-          type: 'expense',
-        });
-      }
-    }
-    onComplete();
   };
 
   return (
@@ -250,12 +257,20 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               Siguiente <ArrowRight className="w-5 h-5" />
             </button>
           ) : (
-            <button
-              onClick={handleComplete}
-              className="flex-1 btn-primary"
-            >
-              Empezar a usar la app
-            </button>
+            <div className="flex-1 flex flex-col gap-2">
+              {completeError && (
+                <p className="text-sm text-danger text-center">{completeError}</p>
+              )}
+              <button
+                onClick={handleComplete}
+                disabled={completing}
+                className={cn("btn-primary flex items-center justify-center gap-2", completing && "opacity-70")}
+              >
+                {completing ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : 'Empezar a usar la app'}
+              </button>
+            </div>
           )}
         </div>
       </div>

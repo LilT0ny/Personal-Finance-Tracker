@@ -13,17 +13,6 @@ function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
 }
 
-// Verificar que el usuario existe en la base de datos
-async function verifyUsuarioExists(usuarioId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id')
-    .eq('id', usuarioId)
-    .single();
-  
-  return !error && !!data;
-}
-
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,22 +24,10 @@ export function useTransactions() {
   // Fetch transactions
   const fetchTransactions = async () => {
     const usuarioId = getUsuarioId();
-    
+
     if (!usuarioId) {
       setTransactions([]);
       setLoading(false);
-      return;
-    }
-
-    // Verificar que el usuario existe
-    const usuarioValido = await verifyUsuarioExists(usuarioId);
-    if (!usuarioValido) {
-      console.warn('Usuario no válido en useTransactions');
-      localStorage.removeItem('usuario_id');
-      localStorage.removeItem('usuario_email');
-      setTransactions([]);
-      setLoading(false);
-      window.location.href = '/';
       return;
     }
 
@@ -77,8 +54,7 @@ export function useTransactions() {
           )
         `)
         .eq('usuario_id', usuarioId)
-        .order('fecha', { ascending: false })
-        .limit(100);
+        .order('fecha', { ascending: false });
 
       if (fetchError) throw fetchError;
 
@@ -198,11 +174,23 @@ export function useTransactions() {
         break;
       case 'custom':
         if (customDateRange) {
-          startDate = customDateRange.startDate;
-        } else {
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          const start = customDateRange.startDate;
+          const end = customDateRange.endDate;
+          let filtered = transactions.filter(t => {
+            const d = new Date(t.fecha);
+            return d >= start && d <= end;
+          });
+          if (categoryFilter !== 'all') {
+            filtered = filtered.filter(t => t.categoria_id === categoryFilter);
+          }
+          return filtered;
         }
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
+      case 'all':
+        return transactions.filter(t =>
+          categoryFilter !== 'all' ? t.categoria_id === categoryFilter : true
+        );
       default:
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
@@ -219,11 +207,11 @@ export function useTransactions() {
   // Calculate totals
   const { income, expenses, allTransactions } = useMemo(() => {
     const income = filteredTransactions
-      .filter(t => t.tipo === 'Ingreso' || t.tipo === 'income')
+      .filter(t => t.tipo === 'Ingreso')
       .reduce((sum, t) => sum + t.monto, 0);
 
     const expenses = filteredTransactions
-      .filter(t => t.tipo === 'Egreso' || t.tipo === 'expense')
+      .filter(t => t.tipo === 'Egreso')
       .reduce((sum, t) => sum + t.monto, 0);
 
     return { income, expenses, allTransactions: filteredTransactions };

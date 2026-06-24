@@ -64,10 +64,10 @@ export function ChartSection({ transactions }: ChartSectionProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #2a2a2a',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
                 borderRadius: '12px',
-                color: '#fff',
+                color: 'var(--foreground)',
               }}
               formatter={(value: number) => [`$${value.toFixed(2)}`, 'Monto']}
             />

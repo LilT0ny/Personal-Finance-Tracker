@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, Lock, Loader2, UserPlus, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 // Función simple para hashear password
@@ -13,6 +14,7 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export function LoginPage() {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(1);
@@ -42,31 +44,15 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      const { data: usuario, error: findError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('email', email.toLowerCase().trim())
-        .single();
-
-      if (findError || !usuario) {
-        setError('No tienes cuenta. Crea una primero.');
-        setSubmitting(false);
-        return;
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) {
+        setError(
+          signInError.message === 'Usuario no encontrado'
+            ? 'No tienes cuenta. Crea una primero.'
+            : 'Email o contraseña incorrectos'
+        );
       }
-
-      const hashedPassword = await hashPassword(password);
-      
-      if (usuario.password_hash !== hashedPassword) {
-        setError('Email o contraseña incorrectos');
-        setSubmitting(false);
-        return;
-      }
-
-      localStorage.setItem('usuario_id', usuario.id);
-      localStorage.setItem('usuario_email', usuario.email);
-      
-      window.location.reload();
-      
+      // On success: AuthContext sets user → AppContent re-renders to Dashboard automatically
     } catch (err) {
       console.error('Error en login:', err);
       setError('Error al iniciar sesión');
@@ -165,8 +151,8 @@ export function LoginPage() {
       }
       
       resetForm();
-      setStep(2);
-      alert('¡Cuenta creada! Iniciá sesión.');
+      setSuccessMessage('¡Cuenta creada exitosamente! Iniciá sesión.');
+      setStep(1);
       
     } catch (err) {
       console.error('Error en handleCompleteProfile:', err);
