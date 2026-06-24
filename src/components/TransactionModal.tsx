@@ -159,7 +159,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
                 />
               </div>
 
-              {/* Guardar dentro del body para que scrollee con el contenido cuando aparece el teclado */}
+              {/* Guardar dentro del body scrolleable — así el teclado no lo tapa en mobile */}
               <Button
                 className="w-full bg-primary text-white font-bold text-base mt-2"
                 size="lg"
