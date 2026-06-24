@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Minus, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle } from 'lucide-react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
 import { useCategories } from '../hooks/useCategories';
 import { cn } from '../lib/utils';
 
@@ -63,7 +63,6 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
       classNames={{
         base: "bg-card border border-border",
         header: "border-b border-border pb-3",
-        footer: "border-t border-border pt-3",
         closeButton: "text-foreground-muted hover:bg-background",
       }}
     >
@@ -144,7 +143,6 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
                     onChange={(e) => handleAmountChange(e.target.value)}
                     placeholder="0.00"
                     className="w-full bg-background border border-border rounded-xl py-4 pl-10 pr-4 text-3xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    autoFocus
                   />
                 </div>
               </div>
@@ -160,11 +158,10 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
                   className="input w-full"
                 />
               </div>
-            </ModalBody>
 
-            <ModalFooter>
+              {/* Guardar dentro del body para que scrollee con el contenido cuando aparece el teclado */}
               <Button
-                className="w-full bg-primary text-white font-bold text-base"
+                className="w-full bg-primary text-white font-bold text-base mt-2"
                 size="lg"
                 onPress={handleSave}
                 isDisabled={!canSave}
@@ -172,7 +169,7 @@ export function TransactionModal({ isOpen, onClose, onSave }: TransactionModalPr
               >
                 Guardar
               </Button>
-            </ModalFooter>
+            </ModalBody>
           </>
         )}
       </ModalContent>
