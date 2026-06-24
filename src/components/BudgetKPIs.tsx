@@ -1,12 +1,18 @@
 import { useMemo, useEffect, useState } from 'react';
 import { Wallet, TrendingUp, PiggyBank } from 'lucide-react';
-import { useTransactions } from '../hooks/useTransactions';
+import { PeriodFilter } from '../hooks/useTransactions';
+import { Transaction } from '../types';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 
+interface BudgetKPIsProps {
+  transactions: Transaction[];
+  income: number;
+  period: PeriodFilter;
+}
+
 // KPIs de Presupuesto para mostrar en Inicio
-export function BudgetKPIs() {
-  const { transactions, income: realIncome, period } = useTransactions();
+export function BudgetKPIs({ transactions, income: realIncome, period }: BudgetKPIsProps) {
   const usuarioId = localStorage.getItem('usuario_id');
 
   // Estado para los presupuestos desde Supabase
@@ -106,7 +112,7 @@ export function BudgetKPIs() {
         .single();
       
       if (data?.ingreso_base) {
-        setBaseIncome(parseFloat(data.ingreso_base));
+        setBaseIncome(parseFloat(data.ingreso_base) || 0);
       }
     };
 
@@ -124,27 +130,40 @@ export function BudgetKPIs() {
     const now = new Date();
     let startDate: Date;
 
+    let periodExpenses: typeof transactions;
+
     switch (period) {
       case 'day':
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        periodExpenses = transactions.filter(
+          t => t.tipo === 'Egreso' && new Date(t.fecha) >= startDate
+        );
         break;
       case 'week':
         startDate = new Date(now);
         startDate.setDate(now.getDate() - now.getDay());
+        periodExpenses = transactions.filter(
+          t => t.tipo === 'Egreso' && new Date(t.fecha) >= startDate
+        );
         break;
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodExpenses = transactions.filter(
+          t => t.tipo === 'Egreso' && new Date(t.fecha) >= startDate
+        );
         break;
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1);
+        periodExpenses = transactions.filter(
+          t => t.tipo === 'Egreso' && new Date(t.fecha) >= startDate
+        );
+        break;
+      case 'all':
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso');
         break;
       default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso');
     }
-
-    const periodExpenses = transactions.filter(
-      t => (t.tipo === 'Egreso' || t.tipo === 'expense') && new Date(t.fecha) >= startDate
-    );
 
     const calculateBucketSpent = (cats: string[]) => {
       return periodExpenses

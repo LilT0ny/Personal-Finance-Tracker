@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Plus, X, Circle, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Edit3, Trash2 } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { Categoria } from '../types';
-import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { ColorPicker } from '../components/ColorPicker';
 
@@ -66,45 +65,20 @@ export function CategoryPage() {
     setSaving(true);
     try {
       if (editingCategory) {
-        // Update existing category
-        const { error } = await supabase
-          .from('categorias')
-          .update({
-            nombre: categoryName,
-            icono: categoryIcon,
-            color: categoryColor,
-            limite_gastos: categoryLimit ? parseFloat(categoryLimit) : 0,
-          })
-          .eq('id', editingCategory.id);
-
-        if (error) throw error;
-        updateCategory(editingCategory.id, {
+        await updateCategory(editingCategory.id, {
           nombre: categoryName,
           icono: categoryIcon,
           color: categoryColor,
           limite_gastos: categoryLimit ? parseFloat(categoryLimit) : 0,
         });
       } else {
-        // Create new category
-        const { error } = await supabase
-          .from('categorias')
-          .insert({
-            usuario_id: usuarioId,
-            nombre: categoryName,
-            icono: categoryIcon,
-            color: categoryColor,
-            limite_gastos: categoryLimit ? parseFloat(categoryLimit) : 0,
-          });
-
-        if (error) throw error;
-        addCategory({
+        await addCategory({
           nombre: categoryName,
           icono: categoryIcon,
           color: categoryColor,
           limite_gastos: categoryLimit ? parseFloat(categoryLimit) : 0,
         });
       }
-
       setShowCategoryModal(false);
     } catch (err) {
       console.error('Error saving category:', err);
@@ -329,12 +303,7 @@ export function CategoryPage() {
               <button
                 onClick={async () => {
                   try {
-                    const { error } = await supabase
-                      .from('categorias')
-                      .delete()
-                      .eq('id', deletingCategory.id);
-                    if (error) throw error;
-                    deleteCategory(deletingCategory.id);
+                    await deleteCategory(deletingCategory.id);
                     setDeletingCategory(null);
                   } catch (err) {
                     console.error('Error deleting category:', err);

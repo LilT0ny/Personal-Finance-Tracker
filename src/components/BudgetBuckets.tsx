@@ -250,29 +250,36 @@ export function BudgetBuckets() {
     }
 
     const now = new Date();
-    let startDate: Date;
+    let periodExpenses: typeof transactions;
 
     switch (period) {
-      case 'day':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      case 'day': {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso' && new Date(t.fecha) >= d);
         break;
-      case 'week':
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - now.getDay());
+      }
+      case 'week': {
+        const w = new Date(now);
+        w.setDate(now.getDate() - now.getDay());
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso' && new Date(t.fecha) >= w);
         break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      case 'month': {
+        const m = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso' && new Date(t.fecha) >= m);
         break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
+      }
+      case 'year': {
+        const y = new Date(now.getFullYear(), 0, 1);
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso' && new Date(t.fecha) >= y);
+        break;
+      }
+      case 'all':
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso');
         break;
       default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodExpenses = transactions.filter(t => t.tipo === 'Egreso');
     }
-
-    const periodExpenses = transactions.filter(
-      t => (t.tipo === 'Egreso' || t.tipo === 'expense') && new Date(t.fecha) >= startDate
-    );
 
     const calculateBucketSpent = (bucketCategoriesArr: string[]) => {
       return periodExpenses
@@ -475,8 +482,8 @@ export function BudgetBuckets() {
               <div className="h-2 bg-border rounded-full overflow-hidden">
                 <div 
                   className="h-full rounded-full transition-all"
-                  style={{ 
-                    width: `${Math.min(100, (bucket.spent / bucket.targetAmount) * 100)}%`,
+                  style={{
+                    width: `${bucket.targetAmount > 0 ? Math.min(100, (bucket.spent / bucket.targetAmount) * 100) : 0}%`,
                     backgroundColor: bucket.spent > bucket.targetAmount ? '#ef4444' : bucket.color
                   }}
                 />

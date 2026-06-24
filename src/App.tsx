@@ -3,8 +3,6 @@ import { Loader2, Plus } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { TransactionModal } from './components/TransactionModal';
-import { BudgetManager } from './components/BudgetManager';
-import { CategoryManager } from './components/CategoryManager';
 import { Sidebar } from './components/Sidebar';
 import { useTransactions } from './hooks/useTransactions';
 import { useBudgets } from './hooks/useBudgets';
@@ -21,11 +19,9 @@ type SidebarSection = 'inicio' | 'presupuesto' | 'ingresos' | 'egresos' | 'categ
 
 function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [budgetManagerOpen, setBudgetManagerOpen] = useState(false);
-  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<SidebarSection>('inicio');
   
-  const { transactions, allTransactions, income, expenses, period, setPeriod, customDateRange, setCustomDateRange, categoryFilter, setCategoryFilter, addTransaction } = useTransactions();
+  const { transactions, allTransactions, income, expenses, period, setPeriod, customDateRange, setCustomDateRange, categoryFilter, setCategoryFilter, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
   const { budgets } = useBudgets();
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -57,11 +53,13 @@ function Dashboard() {
         return <BudgetBuckets />;
       case 'ingresos':
         return (
-          <TransactionPageList 
-            transactions={transactions} 
-            type="income" 
+          <TransactionPageList
+            transactions={transactions}
+            type="income"
             title="Ingresos"
             onAddTransaction={handleSaveTransaction}
+            onUpdate={updateTransaction}
+            onDelete={deleteTransaction}
             period={period}
             onPeriodChange={setPeriod}
             customDateRange={customDateRange}
@@ -70,11 +68,13 @@ function Dashboard() {
         );
       case 'egresos':
         return (
-          <TransactionPageList 
-            transactions={transactions} 
-            type="expense" 
+          <TransactionPageList
+            transactions={transactions}
+            type="expense"
             title="Egresos"
             onAddTransaction={handleSaveTransaction}
+            onUpdate={updateTransaction}
+            onDelete={deleteTransaction}
             period={period}
             onPeriodChange={setPeriod}
             customDateRange={customDateRange}
@@ -108,12 +108,16 @@ function Dashboard() {
 
                         {/* Budget KPIs - Quick View */}
             <div className="mb-4">
-              <BudgetKPIs />
+              <BudgetKPIs transactions={transactions} income={income} period={period} />
             </div>
             
             
             {/* Transaction List */}
-            <TransactionList transactions={transactions} />
+            <TransactionList
+              transactions={transactions}
+              onUpdate={updateTransaction}
+              onDelete={deleteTransaction}
+            />
           </>
         );
     }
@@ -165,17 +169,6 @@ function Dashboard() {
         onSave={handleSaveTransaction}
       />
 
-      {/* Budget Manager Modal */}
-      <BudgetManager
-        isOpen={budgetManagerOpen}
-        onClose={() => setBudgetManagerOpen(false)}
-      />
-
-      {/* Category Manager Modal */}
-      <CategoryManager
-        isOpen={categoryManagerOpen}
-        onClose={() => setCategoryManagerOpen(false)}
-      />
     </div>
   );
 }

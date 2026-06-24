@@ -2,20 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Categoria, PREDEFINED_CATEGORIES } from '../types';
 
-// Obtener usuario_id desde localStorage
 function getUsuarioId(): string | null {
   return localStorage.getItem('usuario_id');
-}
-
-// Verificar que el usuario existe en la base de datos
-async function verifyUsuarioExists(usuarioId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id')
-    .eq('id', usuarioId)
-    .single();
-  
-  return !error && !!data;
 }
 
 export function useCategories() {
@@ -33,19 +21,6 @@ export function useCategories() {
 
     try {
       setLoading(true);
-
-      // Verificar que el usuario existe
-      const usuarioValido = await verifyUsuarioExists(usuarioId);
-      if (!usuarioValido) {
-        console.warn('Usuario no válido, limpiando localStorage');
-        localStorage.removeItem('usuario_id');
-        localStorage.removeItem('usuario_email');
-        setCategories([]);
-        setLoading(false);
-        // Redireccionar al login
-        window.location.href = '/';
-        return;
-      }
 
       // Obtener categorías del usuario
       const { data, error } = await supabase

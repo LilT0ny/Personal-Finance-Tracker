@@ -4,7 +4,6 @@ import { Transaction } from '../types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useCategories } from '../hooks/useCategories';
-import { useTransactions } from '../hooks/useTransactions';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { cn } from '../lib/utils';
 
@@ -12,7 +11,9 @@ interface TransactionPageListProps {
   transactions: Transaction[];
   type: 'income' | 'expense';
   title: string;
-  onAddTransaction: (amount: number, category: string, type: 'income' | 'expense', note?: string) => void;
+  onAddTransaction: (amount: number, category: string, type: 'income' | 'expense', note?: string) => Promise<void>;
+  onUpdate: (id: string, updates: { monto?: number; categoria_id?: string; descripcion?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   period: PeriodFilter;
   onPeriodChange: (period: PeriodFilter) => void;
   customDateRange?: CustomDateRange | null;
@@ -46,13 +47,14 @@ export function TransactionPageList({
   type,
   title,
   onAddTransaction,
+  onUpdate,
+  onDelete,
   period: _period,
   onPeriodChange,
   customDateRange: _customDateRange,
   onCustomDateRangeChange
 }: TransactionPageListProps) {
   const { categories } = useCategories();
-  const { updateTransaction, deleteTransaction } = useTransactions();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'yearly' | 'monthly' | 'weekly' | 'daily'>('monthly');
@@ -96,6 +98,8 @@ export function TransactionPageList({
   const [amount, setAmount] = useState('');
   const [transactionCategory, setTransactionCategory] = useState('');
   const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Get category config
   const getCategoryConfig = (categoryId: string) => {
@@ -117,17 +121,21 @@ export function TransactionPageList({
     return { label: categoryId, icon: 'Circle', color: '#6b7280' };
   };
 
-  const handleSave = () => {
-    // Normalizar: convertir coma a punto
+  const handleSave = async () => {
     const normalizedAmount = amount.replace(',', '.');
     const parsedAmount = parseFloat(normalizedAmount);
-    if (!amount || parsedAmount <= 0 || !transactionCategory) return;
+    if (!amount || parsedAmount <= 0 || !transactionCategory || saving) return;
 
-    onAddTransaction(parsedAmount, transactionCategory, type, note || undefined);
-    setShowModal(false);
-    setAmount('');
-    setTransactionCategory('');
-    setNote('');
+    setSaving(true);
+    try {
+      await onAddTransaction(parsedAmount, transactionCategory, type, note || undefined);
+      setShowModal(false);
+      setAmount('');
+      setTransactionCategory('');
+      setNote('');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAmountChange = (value: string) => {
@@ -564,16 +572,16 @@ export function TransactionPageList({
 
             <button
               onClick={handleSave}
-              disabled={!amount || !transactionCategory || parseFloat(amount) <= 0}
+              disabled={!amount || !transactionCategory || parseFloat(amount) <= 0 || saving}
               className={cn(
-                "w-full py-4 text-lg font-bold rounded-xl",
+                "w-full py-4 text-lg font-bold rounded-xl flex items-center justify-center gap-2",
                 type === 'income'
                   ? "bg-success hover:bg-success/90 text-white"
                   : "bg-danger hover:bg-danger/90 text-white",
-                (!amount || !transactionCategory) && "opacity-50 cursor-not-allowed"
+                (!amount || !transactionCategory || saving) && "opacity-50 cursor-not-allowed"
               )}
             >
-              Guardar
+              {saving ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Guardar'}
             </button>
           </div>
 
@@ -667,28 +675,33 @@ export function TransactionPageList({
               onClick={async () => {
                 const normalizedAmount = amount.replace(',', '.');
                 const parsedAmount = parseFloat(normalizedAmount);
-                if (!amount || parsedAmount <= 0 || !transactionCategory) return;
+                if (!amount || parsedAmount <= 0 || !transactionCategory || savingEdit) return;
 
-                await updateTransaction(editingTransaction.id, {
-                  monto: parsedAmount,
-                  categoria_id: transactionCategory,
-                  descripcion: note || undefined,
-                });
-                setEditingTransaction(null);
-                setAmount('');
-                setTransactionCategory('');
-                setNote('');
+                setSavingEdit(true);
+                try {
+                  await onUpdate(editingTransaction.id, {
+                    monto: parsedAmount,
+                    categoria_id: transactionCategory,
+                    descripcion: note || undefined,
+                  });
+                  setEditingTransaction(null);
+                  setAmount('');
+                  setTransactionCategory('');
+                  setNote('');
+                } finally {
+                  setSavingEdit(false);
+                }
               }}
-              disabled={!amount || !transactionCategory || parseFloat(amount.replace(',', '.')) <= 0}
+              disabled={!amount || !transactionCategory || parseFloat(amount.replace(',', '.')) <= 0 || savingEdit}
               className={cn(
-                "w-full py-4 text-lg font-bold rounded-xl",
+                "w-full py-4 text-lg font-bold rounded-xl flex items-center justify-center gap-2",
                 type === 'income'
                   ? "bg-success hover:bg-success/90 text-white"
                   : "bg-danger hover:bg-danger/90 text-white",
-                (!amount || !transactionCategory) && "opacity-50 cursor-not-allowed"
+                (!amount || !transactionCategory || savingEdit) && "opacity-50 cursor-not-allowed"
               )}
             >
-              Guardar
+              {savingEdit ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Guardar'}
             </button>
           </div>
 
@@ -730,7 +743,7 @@ export function TransactionPageList({
               </button>
               <button
                 onClick={async () => {
-                  await deleteTransaction(deletingTransaction.id);
+                  await onDelete(deletingTransaction.id);
                   setDeletingTransaction(null);
                 }}
                 className="flex-1 py-3 bg-danger text-white rounded-xl font-medium"
