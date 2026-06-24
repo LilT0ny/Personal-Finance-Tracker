@@ -137,7 +137,7 @@ function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 p-4 pb-24 lg:pb-4">
         {/* Mobile header */}
-        <header className="lg:hidden mb-4">
+        <header className="lg:hidden mb-4 pl-12 pt-1">
           <h1 className="text-xl font-bold">
             {currentSection === 'inicio' && 'Finance Tracker'}
             {currentSection === 'presupuesto' && 'Presupuesto'}

@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { ArrowDownCircle, ArrowUpCircle, Download, Calendar, BarChart3, ListTree, Filter, Home, UtensilsCrossed, Car, Heart, Gamepad2, ShoppingBag, Zap, PiggyBank, MoreHorizontal, Circle, AlertTriangle } from 'lucide-react';
+import { Button } from '@heroui/react';
 import { cn } from '../lib/utils';
 import { PeriodFilter, CustomDateRange } from '../hooks/useTransactions';
 import { exportToExcel } from '../lib/exportExcel';
@@ -229,25 +230,29 @@ export function BalanceCard(props: BalanceCardProps) {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
+            <Button
+              size="sm"
+              variant={showFilters ? "solid" : "bordered"}
+              startContent={<Filter className="w-3.5 h-3.5" />}
+              onPress={() => setShowFilters(!showFilters)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm",
-                showFilters 
-                  ? "bg-primary text-white shadow-md active:scale-95" 
-                  : "bg-background border border-border text-foreground-muted hover:bg-background/80"
+                "font-medium text-sm",
+                showFilters
+                  ? "bg-primary text-white border-transparent"
+                  : "border-border text-foreground-muted bg-background"
               )}
             >
-              <Filter className="w-4 h-4" />
               Filtros
-            </button>
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary/90"
+            </Button>
+            <Button
+              size="sm"
+              variant="solid"
+              startContent={<Download className="w-3.5 h-3.5" />}
+              onPress={handleExportExcel}
+              className="bg-primary text-white font-medium"
             >
-              <Download className="w-4 h-4" />
               Excel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
