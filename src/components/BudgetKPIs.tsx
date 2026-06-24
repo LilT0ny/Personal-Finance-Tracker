@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { Wallet, TrendingUp, PiggyBank } from 'lucide-react';
+import { Card, CardBody, Progress, Chip } from '@heroui/react';
 import { PeriodFilter } from '../hooks/useTransactions';
 import { Transaction } from '../types';
 import { supabase } from '../lib/supabase';
@@ -194,62 +195,75 @@ export function BudgetKPIs({ transactions, income: realIncome, period }: BudgetK
     return null;
   }
 
+  const COLOR_MAP: Record<string, 'primary' | 'secondary' | 'success' | 'danger'> = {
+    necesidades: 'primary',
+    deseos: 'secondary',
+    ahorro: 'success',
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       {bucketData.map((bucket) => {
-        const progress = bucket.targetAmount > 0 
-          ? (bucket.spent / bucket.targetAmount) * 100 
+        const progress = bucket.targetAmount > 0
+          ? (bucket.spent / bucket.targetAmount) * 100
           : 0;
         const isOverBudget = progress > 100;
+        const heroColor = isOverBudget ? 'danger' : COLOR_MAP[bucket.id] ?? 'primary';
 
         return (
-          <div 
+          <Card
             key={bucket.id}
             className={cn(
-              "card transition-all",
-              isOverBudget 
-                ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20" 
-                : ""
+              "bg-card border border-border shadow-sm",
+              isOverBudget ? "border-danger/40" : ""
             )}
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${bucket.color}20` }}
-              >
-                <bucket.icon 
-                  className="w-5 h-5" 
-                  style={{ color: bucket.color }}
-                />
+            <CardBody className="p-4 gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${bucket.color}25` }}
+                  >
+                    <bucket.icon className="w-4 h-4" style={{ color: bucket.color }} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-sm text-foreground truncate">{bucket.name}</h3>
+                    <p className="text-xs text-foreground-muted">{bucket.percentage}% del ingreso</p>
+                  </div>
+                </div>
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  color={isOverBudget ? 'danger' : 'default'}
+                  className="text-[10px] h-5 shrink-0"
+                >
+                  ${bucket.targetAmount.toFixed(0)}
+                </Chip>
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-sm truncate">{bucket.name}</h3>
-                <p className="text-xs text-foreground-muted truncate">
-                  {bucket.percentage}% (${bucket.targetAmount.toFixed(0)})
-                </p>
-              </div>
-            </div>
 
-            <div className="h-2 bg-background rounded-full overflow-hidden mb-2">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${Math.min(progress, 100)}%`,
-                  backgroundColor: isOverBudget ? '#ef4444' : bucket.color
-                }}
+              <Progress
+                value={Math.min(progress, 100)}
+                color={heroColor}
+                size="sm"
+                className="w-full"
+                aria-label={`${bucket.name} progress`}
               />
-            </div>
 
-            <div className="flex justify-between text-xs">
-              <span className="text-foreground-muted">${bucket.spent.toFixed(0)}</span>
-              <span className={cn(
-                "font-medium",
-                isOverBudget ? "text-red-500" : "text-foreground"
-              )}>
-                {progress.toFixed(0)}%
-              </span>
-            </div>
-          </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-foreground-muted">
+                  Gastado: <span className="font-semibold text-foreground">${bucket.spent.toFixed(0)}</span>
+                </span>
+                <span className={cn("font-bold", isOverBudget ? "text-danger" : "text-foreground-muted")}>
+                  {progress.toFixed(0)}%
+                </span>
+              </div>
+
+              {isOverBudget && (
+                <p className="text-[10px] text-danger font-medium -mt-1">¡Presupuesto excedido!</p>
+              )}
+            </CardBody>
+          </Card>
         );
       })}
     </div>
