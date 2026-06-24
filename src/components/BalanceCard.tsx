@@ -190,8 +190,7 @@ export function BalanceCard(props: BalanceCardProps) {
   });
 
   chartData.sort((a, b) => b.spent - a.spent);
-  // Filter to only show categories with expenses (spent > 0)
-  const filteredChartData = chartData.filter(d => d.spent > 0);
+  const filteredChartData = chartData.filter(d => d.spent > 0).slice(0, 5);
   
   // Use actual max spent for Y-axis (not limit) - bars can overflow past limit
   const maxValue = filteredChartData.length > 0 ? Math.max(...filteredChartData.map(d => d.spent)) : 0;
@@ -399,7 +398,7 @@ export function BalanceCard(props: BalanceCardProps) {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-foreground-muted text-sm font-medium">Gastos por Categoría</h3>
               <span className="text-[10px] text-foreground-muted bg-background/80 border border-border/50 px-2 py-0.5 rounded-full">
-                {filteredChartData.length} categorías
+                Top {filteredChartData.length}
               </span>
             </div>
             <div className="bg-background/50 rounded-xl p-4 border border-border/50">
